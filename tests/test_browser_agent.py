@@ -55,6 +55,30 @@ class BrowserAgentTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             ba.dispatch('a@x', {'action': 'start', 'id': self.id, 'task': 'x'}, None)
 
+    def test_destructive_click_needs_approval_then_runs(self):
+        self.start()
+        obs = {**OBS, 'elements': OBS['elements'] + [{'id': 4, 'kind': 'button', 'label': 'Delete resource group'}]}
+        step = {'action': 'step', 'id': self.id, 'observation': obs}
+        chat = self.chat({'thought': 't', 'actions': [{'do': 'click', 'id': 4}]})
+        held = ba.dispatch('a@x', step, chat)
+        self.assertEqual(held['actions'], [])
+        self.assertIn('Approval needed', held['wait_user'])
+        ok = ba.dispatch('a@x', {**step, 'approve': True}, chat)
+        self.assertEqual([a['do'] for a in ok['actions']], ['click'])
+
+    def test_blocked_and_idle_loop_and_alternatives(self):
+        self.start()
+        out = ba.dispatch('a@x', {'action': 'step', 'id': self.id, 'observation': OBS}, self.chat({'actions': [], 'blocked': 'portal empty'}))
+        self.assertEqual(out['status'], 'blocked')
+        alt = {'options': [{'title': 'Cloud Shell', 'detail': 'use az', 'task': 'Use Cloud Shell to run az group create'}]}
+        res = ba.dispatch('a@x', {'action': 'alternatives', 'id': self.id}, self.chat(alt))
+        self.assertEqual(res['alternatives'][0]['title'], 'Cloud Shell')
+        self.id = str(uuid4()); self.start()
+        wait = self.chat({'actions': [{'do': 'wait'}]})
+        for _ in range(6):
+            out = ba.dispatch('a@x', {'action': 'step', 'id': self.id, 'observation': {**OBS, 'elements': []}}, wait)
+        self.assertEqual(out['status'], 'blocked')
+
 
 if __name__ == '__main__':
     unittest.main()

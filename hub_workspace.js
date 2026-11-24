@@ -636,6 +636,36 @@
       if (resumeUser) resumeUser();
     });
     continueButton.hidden = true;
+    let approveNext = false;
+    let lastTask = "";
+    const recovery = document.createElement("div");
+    recovery.hidden = true;
+    function showRecovery(reason) {
+      recovery.replaceChildren();
+      recovery.hidden = false;
+      const note = document.createElement("p");
+      note.textContent = "Not completed: " + reason;
+      recovery.append(note);
+      control(recovery, "Retry", async () => {
+        recovery.hidden = true;
+        await runAgent("Previous attempt failed (" + reason + "). Reload the portal page first, then try again.\n" + lastTask, lastTask);
+      });
+      control(recovery, "Suggest another way", async () => {
+        const res = await deployAgentApi({ action: "alternatives", id: agentJob });
+        const box = document.createElement("div");
+        if (!res.alternatives.length) box.textContent = "No alternative suggested. Rephrase the task and send again.";
+        for (const option of res.alternatives) {
+          control(box, option.title, async () => {
+            recovery.hidden = true;
+            await runAgent(option.task, lastTask);
+          });
+          const detail = document.createElement("small");
+          detail.textContent = " " + option.detail;
+          box.append(detail, document.createElement("br"));
+        }
+        recovery.append(box);
+      });
+    }
     function logLine(text) {
       agentLog.append(document.createTextNode(text + "\n"));
     }
@@ -668,8 +698,11 @@
         window.postMessage({ src: "ccc-page", type: "agent", id, op, ...extra }, location.origin);
       });
     }
-    async function runAgent(task) {
+    async function runAgent(task, original) {
       stopRequested = false;
+      lastTask = original || task;
+      recovery.hidden = true;
+      approveNext = false;
       agentLog.replaceChildren();
       const ping = await ext("ping", {}, 4000);
       if (!ping || !ping.ok || parseInt(ping.version, 10) < 2)
@@ -684,20 +717,31 @@
         let results = [];
         for (let step = 1; step <= 250 && !stopRequested; step++) {
           const observation = await ext("observe");
-          const out = await deployAgentApi({ action: "step", id: agentJob, observation, results });
+          const out = await deployAgentApi({ action: "step", id: agentJob, observation, results, approve: approveNext });
+          approveNext = false;
           results = [];
           logLine(`[${step}] ${out.log.length ? out.log[out.log.length - 1].thought : ""}`);
           for (const note of out.log.length ? out.log[out.log.length - 1].notes : []) logLine("   ! " + note);
+          if (out.blocked || out.status === "blocked") {
+            logLine("Blocked: " + (out.blocked || out.blocker));
+            showRecovery(out.blocked || out.blocker);
+            break;
+          }
           if (out.done) {
             logLine("Finished: " + (out.summary || "done"));
+            if (/^could not|^unable|^failed/i.test(out.summary || "")) showRecovery(out.summary);
             break;
           }
           if (out.status === "failed" || out.status === "stopped") {
             logLine("Agent " + out.status + ".");
+            if (out.status === "failed") showRecovery("step limit reached or agent error");
             break;
           }
           if (out.wait_user) {
             logLine("Waiting for you: " + out.wait_user);
+            const approval = /^Approval needed/.test(out.wait_user);
+            approveNext = approval;
+            continueButton.textContent = approval ? "Approve and continue" : "I'm done, continue";
             continueButton.hidden = false;
             await new Promise((resolve) => (resumeUser = resolve));
             resumeUser = null;
@@ -711,11 +755,35 @@
           }
           if (!out.actions.length) await new Promise((resolve) => setTimeout(resolve, 1500));
         }
+      } catch (error) {
+        logLine("Error: " + error.message);
+        showRecovery(error.message);
       } finally {
         stopButton.hidden = true;
         continueButton.hidden = true;
       }
     }
+    const checksBox = document.createElement("div");
+    checksBox.style.whiteSpace = "pre-wrap";
+    const checksButton = control(panel, "Check connections", async () => {
+      const rows = [];
+      const add = (name, state, detail) => rows.push(`${state.padEnd(15)} ${name}${detail ? " - " + detail : ""}`);
+      try {
+        const id = crypto.randomUUID();
+        await deployAgentApi({ action: "start", id, task: "connection check", consent: true });
+        const res = await deployAgentApi({ action: "selftest", id });
+        add("Azure AI Foundry response", res.ok ? "PASS" : "FAIL", res.detail);
+      } catch (error) { add("Azure AI Foundry response", "FAIL", error.message); }
+      try {
+        const ping = await ext("ping", {}, 4000);
+        add("Browser extension connected", ping && ping.ok ? "PASS" : "FAIL", ping && ping.version ? "v" + ping.version : "");
+        const tab = await ext("observe", {}, 8000).catch((error) => ({ error: error.message }));
+        add("Read-only browser action (read the portal tab)", tab.elements ? "PASS" : "NOT CONFIGURED", tab.elements ? `${tab.elements.length} controls on ${tab.title || tab.url}` : "open the Azure portal via a task first (" + (tab.error || "") + ")");
+      } catch (error) { add("Browser extension connected", "FAIL", error.message); }
+      for (const name of ["az account show on laptop", "Read-only Azure query on laptop", "Read a selected local project file", "git status in a selected repo", "Read-only GitHub query"])
+        add(name, "NOT CONFIGURED", "needs the laptop executor (not built yet)");
+      checksBox.textContent = rows.join("\n");
+    });
     const sendButton = control(panel, "Send", async () => {
       const text = input.value.trim();
       if (!text) throw new Error("Describe what to deploy.");
@@ -739,7 +807,7 @@
       await refreshHistory();
     });
     // Buttons were created before the inputs; append everything in display order.
-    panel.append(history, log, input, consentLabel, sendButton, stopButton, continueButton, agentLog, planBox);
+    panel.append(history, log, input, consentLabel, sendButton, stopButton, continueButton, checksButton, checksBox, agentLog, recovery, planBox);
     content.append(panel);
     refreshHistory().catch((error) => {
       status.textContent = error.message;
