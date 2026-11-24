@@ -259,7 +259,19 @@ document.getElementById('alt').onclick=async(e)=>{e.preventDefault();const [ok,j
 </script></html>"""
 
 
+LAPTOP_EXECUTOR = 'http://127.0.0.1:8765'
+
+
 class Handler(app.Handler):
+    def send_header(self, keyword, value):
+        # Let the page talk to the user's own laptop executor (loopback only); everything else stays blocked.
+        if keyword.lower() == 'content-security-policy' and LAPTOP_EXECUTOR not in value:
+            if 'connect-src' in value:
+                value = value.replace('connect-src', 'connect-src ' + LAPTOP_EXECUTOR, 1)
+            else:
+                value += "; connect-src 'self' " + LAPTOP_EXECUTOR
+        super().send_header(keyword, value)
+
     def valid_host(self):
         return True                      # behind Container Apps ingress (TLS); requests are authenticated below
 
