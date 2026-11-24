@@ -1,3 +1,2 @@
-FROM cccacr1a5492.azurecr.io/ccc@sha256:983e7660ac2659063f3c13d65ade9870faa703947fb15b531c7ad75166c6b29d
-COPY server_app.py supervisor.py weather_console.py live_workflow.py deployment_plan.py assessment_hub.py supervisor.js /app/
-
+FROM cccacr1a5492.azurecr.io/ccc@sha256:a8c0259f1b3e46cf49aea9aab5f8d249e6e0623018b5de03e13f170440214764
+COPY server_app.py supervisor.js hub_jobs.py hub_worker.py hub_workspace.js hub_chat.py /app/

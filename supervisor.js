@@ -1,12 +1,14 @@
 (() => {
   const panel = document.createElement('section');
   panel.className = 'panel';
-  panel.innerHTML = '<h2>Supervisor jobs</h2><p>Run a sample assessment, prepare a private VM draft, or do both. Each job uses synthetic data.</p>';
+  panel.innerHTML = '<h2>Supervisor jobs</h2><p>Open the Assessment Hub for customer assessments and saved cloud runs.</p>';
   const controls = document.createElement('div');
   const history = document.createElement('div');
   const message = document.createElement('p');
   message.setAttribute('role', 'status');
-  panel.append(controls, message, history);
+  panel.append(message);
+  const legacy=document.createElement('details');
+  const legacyTitle=document.createElement('summary');legacyTitle.textContent='Earlier validation jobs';legacy.append(legacyTitle,history);panel.append(legacy);
   function button(parent, label, fn) {
     const element = document.createElement('button');
     element.textContent = label;
@@ -46,9 +48,6 @@
       for (const action of actions) button(row,action,async () => { await api({action,id:job.id}); await refresh(); });
     }
     message.textContent = jobs.length ? '' : 'No saved jobs yet.';
-  }
-  for (const [mode,label] of [['one','Start Prompt One'],['two','Start Prompt Two'],['both','Start both prompts']]) {
-    button(controls,label,async () => {await api({action:'start',mode,id:crypto.randomUUID()}); await refresh();});
   }
   const live = document.createElement('section');
   const heading = document.createElement('h2');

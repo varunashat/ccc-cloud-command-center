@@ -21,6 +21,8 @@ import app
 from proposal.proposal_studio import serve as serve_proposal
 import tam_proxy
 import supervisor
+import hub_jobs
+import hub_chat
 import live_workflow
 import weather_console
 
@@ -101,7 +103,7 @@ def msal_app(email_or_cache, tenant='organizations'):
     return msal.PublicClientApplication(CLI_CLIENT, authority=AUTHORITY + tenant, token_cache=cache), cache
 
 
-def user_token(email, tenant=None):
+def _acquire_user_token(email, tenant=None):
     """ARM access token for this user in a customer tenant (silent, from the refresh token)."""
     a, cache = msal_app(email, tenant or 'organizations')
     accts = [x for x in a.get_accounts() if x.get('username', '').lower() == email]
@@ -113,6 +115,24 @@ def user_token(email, tenant=None):
         err = (r or {}).get('error_description', '')[:160]
         raise ValueError('Could not get a token for that directory (MFA or Conditional Access may need a fresh sign-in). ' + err)
     return r['access_token']
+
+
+_TOKEN_CACHE_LOCK = threading.RLock()
+
+
+def user_token(email, tenant=None):
+    with _TOKEN_CACHE_LOCK:
+        lock_path = cache_path(email).with_suffix('.lock')
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        with lock_path.open('a') as cache_lock:
+            if os.name == 'posix':
+                import fcntl
+                fcntl.flock(cache_lock, fcntl.LOCK_EX)
+            try:
+                return _acquire_user_token(email, tenant)
+            finally:
+                if os.name == 'posix':
+                    fcntl.flock(cache_lock, fcntl.LOCK_UN)
 
 
 def finish_login(result, cache, fid):
@@ -300,7 +320,7 @@ class Handler(app.Handler):
             self._local_dms_dashboard = True
             page = (app.ROOT / 'dashboard.html').read_text(encoding='utf-8').replace('__TOKEN__', app.TOKEN)
             boot = ('<script>window.CCC_SERVER=' + json.dumps({'user': current_user(), 'bookmarklet': bookmarklet_href()}) + '</script>')
-            script = (app.ROOT / 'supervisor.js').read_text(encoding='utf-8')
+            script = (app.ROOT / 'supervisor.js').read_text(encoding='utf-8') + '\n' + (app.ROOT / 'hub_workspace.js').read_text(encoding='utf-8')
             page += '<script>' + script + '</script>'
             return self.send(200, page.replace('<script>', boot + '<script>', 1), 'text/html')
         return super().do_GET()
@@ -341,11 +361,25 @@ class Handler(app.Handler):
         if self.path == '/api/supervisor':
             try:
                 size = int(self.headers.get('Content-Length', '0'))
-                if not 0 < size <= 2048:
+                if not 0 < size <= 16384:
                     return self.send(400, {'error': 'Invalid job request length.'})
                 payload = json.loads(self.rfile.read(size))
                 if not isinstance(payload, dict):
                     raise ValueError('Invalid job request.')
+                if payload.get('channel') == 'assessment-chat':
+                    who = current_user()
+                    caller = hub_jobs.azure.make_caller(lambda tenant: user_token(who, tenant), retries=0, timeout=20)
+                    try:
+                        return self.send(200, hub_chat.dispatch(who, payload, caller))
+                    except (ValueError, LookupError) as error:
+                        return self.send(400, {'error': str(error)})
+                if payload.get('channel') == 'assessment-hub':
+                    who = current_user()
+                    caller = hub_jobs.azure.make_caller(lambda tenant: user_token(who, tenant), retries=0, timeout=20)
+                    answer = hub_jobs.dispatch(who, payload, caller)
+                    for section in answer.get('sections', {}).values():
+                        section['csv'] = hub_jobs.export_csv(section)
+                    return self.send(200, answer)
                 if payload.get('action') == 'weather':
                     try:
                         return self.send(200, weather_console.forecast(payload))
