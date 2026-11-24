@@ -838,23 +838,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 <script id="ccc-cg-nav">(function(){function add(){var n=document.querySelector('nav.workspace-nav');if(!n||n.querySelector('a[href="/cost-growth"]'))return;
 var a=document.createElement('a');a.href='/cost-growth';a.textContent='Cost Growth (Seven Seas)';a.title='Monthly cost growth of every Seven Seas customer: spikes, RI / Savings plan / Marketplace, Excel';
 var t=[].slice.call(n.querySelectorAll('a')).filter(function(x){return /TAM/.test(x.textContent)})[0];if(t&&t.parentNode)t.parentNode.insertBefore(a,t.nextSibling);else n.appendChild(a)}
-add();setTimeout(add,800);setTimeout(add,2500);}());</script><button id="ccc-ct-btn" title="Read-only test: can Cloud Command Center read Seven Seas (8372436B) costs with your Azure sign-in? Reads Zand Bank October 2026.">$ Cost access test</button>
-<div id="ccc-ct-box" hidden><b>Cost access test</b><button id="ccc-ct-x" aria-label="Close">✕</button><div id="ccc-ct-out">Testing…</div></div>
-<style>#ccc-ct-btn{position:fixed;right:16px;bottom:58px;z-index:99998;background:#334155;color:#fff;border:0;border-radius:16px;padding:6px 12px;font:12px Segoe UI,system-ui,sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)}
-#ccc-ct-box{position:fixed;right:16px;bottom:96px;z-index:99999;width:min(440px,92vw);background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:10px;padding:12px 14px;font:13px Segoe UI,system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.45)}
-#ccc-ct-box b{display:inline-block;margin-bottom:8px}#ccc-ct-x{float:right;background:none;border:0;color:#94a3b8;cursor:pointer}
-#ccc-ct-out .ok{color:#4ade80;font-weight:600}#ccc-ct-out .no{color:#f87171;font-weight:600}#ccc-ct-out li{margin:4px 0;color:#cbd5e1;font-size:12px}</style>
-<script>(function(){var b=document.getElementById('ccc-ct-btn'),x=document.getElementById('ccc-ct-box'),o=document.getElementById('ccc-ct-out');
-function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
-document.getElementById('ccc-ct-x').onclick=function(){x.hidden=true};
-b.onclick=async function(){x.hidden=false;o.textContent='Asking Azure for Zand Bank October 2026 cost with your sign-in…';
-try{var r=await fetch('/ai/cost-test',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',credentials:'same-origin'});var j=await r.json();
-if(r.status!=200){o.innerHTML='<span class="no">'+esc(j.error||('HTTP '+r.status))+'</span>';return}
-var h='<div class="'+(j.ok?'ok':'no')+'">'+(j.ok?'✔ Works':'✖ Does not work')+'</div><p>'+esc(j.message)+'</p>';
-if(j.ok)h+='<p>Signed in as '+esc(j.signed_in_as)+' · scope: '+esc(j.scope)+'</p>';
-if(j.tries&&j.tries.length){h+='<ul>';j.tries.forEach(function(t){h+='<li>'+esc((t.scope||'')+' · '+t.directory+' → '+t.result)+'</li>'});h+='</ul>'}
-o.innerHTML=h}catch(e){o.innerHTML='<span class="no">Could not reach the app.</span>'}}}());</script>
-<style>#ccc-ai{position:fixed;right:16px;bottom:16px;z-index:99999;font:14px Segoe UI,system-ui,sans-serif}
+add();setTimeout(add,800);setTimeout(add,2500);}());</script><style>#ccc-ai{position:fixed;right:16px;bottom:16px;z-index:99999;font:14px Segoe UI,system-ui,sans-serif}
 #ccc-ai-btn{background:#0f766e;color:#fff;border:0;border-radius:18px;padding:6px 12px;font:600 12px Segoe UI,system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25);opacity:.92}#ccc-ai-btn:hover{opacity:1;background:#115e59}
 #ccc-ai-box{position:absolute;right:0;bottom:40px;width:min(440px,92vw);height:min(600px,75vh);background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.45)}
 #ccc-ai-box[hidden]{display:none}#ccc-ai-box header{display:flex;gap:8px;align-items:baseline;padding:10px 12px;border-bottom:1px solid #1e293b}

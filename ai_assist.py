@@ -419,69 +419,6 @@ def forward_services(raw, headers):
         return code, ctype, data
     return None
 
-COST_TEST_PROFILE = ('5010721', 'Zand Bank PJSC-69366633-Zand')
-COST_TEST_ACCOUNT = 'pcn.8372436B'
-NOVENTIQ_TENANT = '1f3f9d61-e763-4e33-b8eb-e95c97f9f2ff'
-
-
-def _jwt_claims(tok):
-    import base64
-    try:
-        part = tok.split('.')[1]
-        return json.loads(base64.urlsafe_b64decode(part + '=' * (-len(part) % 4)))
-    except Exception:
-        return {}
-
-
-def cost_test(user):
-    """Read-only check: can the signed-in user's own Azure sign-in in Cloud Command Center read Seven Seas costs?
-    Asks Cost Management for Zand Bank's October 2026 actual cost. Returns what Azure answered; nothing is changed."""
-    import sys
-    srv = sys.modules.get('__main__')
-    get_token = getattr(srv, 'user_token', None) or getattr(sys.modules.get('server_app'), 'user_token', None)
-    if not get_token:
-        return 200, {'ok': False, 'tries': [], 'message': 'This build of Cloud Command Center has no Azure sign-in to test with.'}
-    code, name = COST_TEST_PROFILE
-    body = {'type': 'ActualCost', 'timeframe': 'Custom',
-            'timePeriod': {'from': '2026-10-01T00:00:00Z', 'to': '2026-10-31T23:59:59Z'},
-            'dataset': {'granularity': 'None', 'aggregation': {'c': {'name': 'Cost', 'function': 'Sum'}}}}
-    scopes = [('billing profile', f'/providers/Microsoft.Billing/billingAccounts/{COST_TEST_ACCOUNT}/billingProfiles/{code}'),
-              ('EA enrollment', f'/providers/Microsoft.Billing/billingAccounts/{code}')]
-    tries = []
-    for tenant in (NOVENTIQ_TENANT, None):
-        try:
-            tok = get_token(user, tenant)
-        except Exception as e:
-            tries.append({'directory': tenant or 'home directory', 'result': 'no token: ' + str(e)[:200]})
-            continue
-        cl = _jwt_claims(tok)
-        who = f"{cl.get('upn') or cl.get('unique_name') or user} (directory {cl.get('tid', '?')})"
-        for label, scope in scopes:
-            url = f'https://management.azure.com{scope}/providers/Microsoft.CostManagement/query?api-version=2021-10-01'
-            req = urllib.request.Request(url, data=json.dumps(body).encode(), method='POST',
-                                         headers={'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json'})
-            try:
-                with urllib.request.urlopen(req, timeout=90) as r:
-                    j = json.load(r)
-                p = j.get('properties') or {}
-                cols = [str(c.get('name', '')).lower() for c in p.get('columns') or []]
-                rows = p.get('rows') or []
-                ci = cols.index('cost') if 'cost' in cols else 0
-                cur = rows[0][cols.index('currency')] if rows and 'currency' in cols else ''
-                amt = sum(float(r[ci] or 0) for r in rows)
-                return 200, {'ok': True, 'customer': f'{name} ({code})', 'month': 'October 2026', 'amount': round(amt, 2),
-                             'currency': cur, 'scope': label, 'signed_in_as': who,
-                             'message': f'Cloud Command Center CAN read Seven Seas costs with your sign-in: {name}, October 2026 = {amt:,.2f} {cur}.'}
-            except urllib.error.HTTPError as e:
-                txt = e.read().decode('utf-8', 'replace')
-                m = re.search(r'"message"\s*:\s*"([^"]+)', txt)
-                tries.append({'directory': who, 'scope': label, 'result': f'HTTP {e.code}: ' + (m.group(1) if m else txt)[:220]})
-            except Exception as e:
-                tries.append({'directory': who, 'scope': label, 'result': type(e).__name__ + ': ' + str(e)[:160]})
-    return 200, {'ok': False, 'customer': f'{name} ({code})', 'month': 'October 2026', 'tries': tries,
-                 'message': 'Cloud Command Center could NOT read Seven Seas costs with your sign-in. Azure answered: '
-                            + (tries[-1]['result'] if tries else 'nothing')}
-
 
 
 # ----------------------------------------------------------------------------- hook into the hosted server
@@ -495,7 +432,7 @@ def install(handler_cls):
         path = self.path.split('?', 1)[0]
         if path == '/api/run':
             return run_chat(self)
-        if path not in ('/ai/ask', '/tam/api/ask', '/tam/api/ask-services', '/ai/cost-test'):
+        if path not in ('/ai/ask', '/tam/api/ask', '/tam/api/ask-services'):
             return real_post(self)
         o = self.headers.get('Origin')
         if o is not None and urllib.parse.urlparse(o).netloc != self.headers.get('Host'):
@@ -512,10 +449,6 @@ def install(handler_cls):
         except ValueError:
             return self.send(400, {'error': 'Bad request'})
         t0 = time.time()
-        if path == '/ai/cost-test':
-            code, out = cost_test(user)
-            logging.info('cost-test status=%s ok=%s', code, out.get('ok'))
-            return self.send(code, out)
         if path == '/tam/api/ask-services':
             fwd = forward_services(raw, {k: self.headers[k] for k in ('Content-Type', 'x-tam-pass') if self.headers.get(k)})
             if fwd:
@@ -592,23 +525,7 @@ WIDGET = r"""<div id="ccc-ai"><button id="ccc-ai-btn" title="Ask Cloud Center: a
 <section id="ccc-ai-box" hidden><header><b>Ask Cloud Center</b><small>All internal data first · Azure AI Foundry</small><button id="ccc-ai-x" aria-label="Close">✕</button></header>
 <div id="ccc-ai-log" aria-live="polite"><p class="ccc-ai-hint">Ask about your customers, EA spend, AMMP claims, services forecast, a discovery / bill / calculator result, or any Azure question.</p></div>
 <form id="ccc-ai-f"><textarea id="ccc-ai-q" rows="2" placeholder="e.g. Top 5 EA customers by October spend" maxlength="2000"></textarea><button>Send</button></form></section></div>
-__CGNAV__<button id="ccc-ct-btn" title="Read-only test: can Cloud Command Center read Seven Seas (8372436B) costs with your Azure sign-in? Reads Zand Bank October 2026.">$ Cost access test</button>
-<div id="ccc-ct-box" hidden><b>Cost access test</b><button id="ccc-ct-x" aria-label="Close">✕</button><div id="ccc-ct-out">Testing…</div></div>
-<style>#ccc-ct-btn{position:fixed;right:16px;bottom:58px;z-index:99998;background:#334155;color:#fff;border:0;border-radius:16px;padding:6px 12px;font:12px Segoe UI,system-ui,sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)}
-#ccc-ct-box{position:fixed;right:16px;bottom:96px;z-index:99999;width:min(440px,92vw);background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:10px;padding:12px 14px;font:13px Segoe UI,system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.45)}
-#ccc-ct-box b{display:inline-block;margin-bottom:8px}#ccc-ct-x{float:right;background:none;border:0;color:#94a3b8;cursor:pointer}
-#ccc-ct-out .ok{color:#4ade80;font-weight:600}#ccc-ct-out .no{color:#f87171;font-weight:600}#ccc-ct-out li{margin:4px 0;color:#cbd5e1;font-size:12px}</style>
-<script>(function(){var b=document.getElementById('ccc-ct-btn'),x=document.getElementById('ccc-ct-box'),o=document.getElementById('ccc-ct-out');
-function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
-document.getElementById('ccc-ct-x').onclick=function(){x.hidden=true};
-b.onclick=async function(){x.hidden=false;o.textContent='Asking Azure for Zand Bank October 2026 cost with your sign-in…';
-try{var r=await fetch('/ai/cost-test',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',credentials:'same-origin'});var j=await r.json();
-if(r.status!=200){o.innerHTML='<span class="no">'+esc(j.error||('HTTP '+r.status))+'</span>';return}
-var h='<div class="'+(j.ok?'ok':'no')+'">'+(j.ok?'✔ Works':'✖ Does not work')+'</div><p>'+esc(j.message)+'</p>';
-if(j.ok)h+='<p>Signed in as '+esc(j.signed_in_as)+' · scope: '+esc(j.scope)+'</p>';
-if(j.tries&&j.tries.length){h+='<ul>';j.tries.forEach(function(t){h+='<li>'+esc((t.scope||'')+' · '+t.directory+' → '+t.result)+'</li>'});h+='</ul>'}
-o.innerHTML=h}catch(e){o.innerHTML='<span class="no">Could not reach the app.</span>'}}}());</script>
-<style>#ccc-ai{position:fixed;right:16px;bottom:16px;z-index:99999;font:14px Segoe UI,system-ui,sans-serif}
+__CGNAV__<style>#ccc-ai{position:fixed;right:16px;bottom:16px;z-index:99999;font:14px Segoe UI,system-ui,sans-serif}
 #ccc-ai-btn{background:#0f766e;color:#fff;border:0;border-radius:18px;padding:6px 12px;font:600 12px Segoe UI,system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25);opacity:.92}#ccc-ai-btn:hover{opacity:1;background:#115e59}
 #ccc-ai-box{position:absolute;right:0;bottom:40px;width:min(440px,92vw);height:min(600px,75vh);background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.45)}
 #ccc-ai-box[hidden]{display:none}#ccc-ai-box header{display:flex;gap:8px;align-items:baseline;padding:10px 12px;border-bottom:1px solid #1e293b}
