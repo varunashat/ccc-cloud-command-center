@@ -60,3 +60,9 @@ Final rollout is revision 0000032, image sha256:1e0073558f15b81ce9e91aa65d86a504
 - Extension (extension/agent_bg.js, ccc_bridge.js) observes/acts across frames in one tab.
 - Test: `python tests/e2e/run_extension_e2e.py` (headless Chrome, local fake portal with an iframe; needs playwright + google-chrome).
 - Not yet exercised against the real Azure portal; portal widgets (custom comboboxes) may need follow-up tuning.
+
+## Laptop executor ("Run on my laptop" mode)
+- laptop/executor.py (local 127.0.0.1 server, pairing code, CORS only for the CCC origin), laptop/policy.py (forbidden / approval / write / read-only classes, secret scrubbing, folder guard).
+- laptop_agent.py: Foundry plans -> priced estimate (Azure Retail Prices API) -> operator approves -> commands -> verification; blocks after 3 identical failures.
+- Page (hub_workspace.js `runLaptop`): connect status, plan + cost, held-command approvals, command evidence, Check connections (real checks).
+- Tests: tests/test_laptop_*.py and tests/e2e/run_laptop_e2e.py. Windows installer and az / PowerShell paths not yet run on a real laptop.

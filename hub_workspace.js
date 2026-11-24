@@ -518,6 +518,7 @@
     const modes = {};
     for (const [value, text] of [
       ["browser", "Deploy through my browser, fully automatic (AI Foundry operates my signed-in Azure portal tab via the CCC extension)"],
+      ["laptop", "Run on my laptop: Azure CLI, PowerShell, Git, GitHub and my selected folders (AI Foundry plans, you approve, then it executes and verifies)"],
       ["cloud", "Plan only (AI Foundry drafts resources, CLI steps and checks; nothing runs)"],
     ]) {
       const label = document.createElement("label");
@@ -626,8 +627,9 @@
     let resumeUser = null;
     const stopButton = control(panel, "Stop", async () => {
       stopRequested = true;
-      if (agentJob) await deployAgentApi({ action: "stop", id: agentJob });
+      if (agentJob) await (lastRunner === runLaptop ? laptopApi : deployAgentApi)({ action: "stop", id: agentJob });
       if (resumeUser) resumeUser();
+      for (const release of stopWaiters.splice(0)) release();
       logLine("Stopped by you.");
     });
     stopButton.hidden = true;
@@ -638,6 +640,7 @@
     continueButton.hidden = true;
     let approveNext = false;
     let lastTask = "";
+    let lastRunner = null;
     const recovery = document.createElement("div");
     recovery.hidden = true;
     function showRecovery(reason) {
@@ -648,9 +651,9 @@
       recovery.append(note);
       control(recovery, "Retry", async () => {
         recovery.hidden = true;
-        await runAgent("Previous attempt failed (" + reason + "). Reload the portal page first, then try again.\n" + lastTask, lastTask);
+        await lastRunner("Previous attempt failed (" + reason + "). Read the error, change something concrete, then try again.\n" + lastTask, lastTask);
       });
-      control(recovery, "Suggest another way", async () => {
+      if (lastRunner === runAgent) control(recovery, "Suggest another way", async () => {
         const res = await deployAgentApi({ action: "alternatives", id: agentJob });
         const box = document.createElement("div");
         if (!res.alternatives.length) box.textContent = "No alternative suggested. Rephrase the task and send again.";
@@ -701,6 +704,7 @@
     async function runAgent(task, original) {
       stopRequested = false;
       lastTask = original || task;
+      lastRunner = runAgent;
       recovery.hidden = true;
       approveNext = false;
       agentLog.replaceChildren();
@@ -763,6 +767,171 @@
         continueButton.hidden = true;
       }
     }
+    const EXE = "http://127.0.0.1:8765";
+    const exePanel = document.createElement("div");
+    const exeStatus = document.createElement("div");
+    const exeCode = document.createElement("input");
+    exeCode.placeholder = "Pairing code shown in the executor window";
+    exeCode.setAttribute("aria-label", "Executor pairing code");
+    let exeToken = "";
+    try { exeToken = sessionStorage.getItem("ccc-exe-token") || ""; } catch (e) { exeToken = ""; }
+    let exeInfo = null;
+    async function exe(path, body, timeout = 650000) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeout);
+      try {
+        const response = await fetch(EXE + path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Executor-Token": exeToken },
+          body: JSON.stringify(body || {}),
+          signal: controller.signal,
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Executor request failed.");
+        return data;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+    async function refreshExe() {
+      exeInfo = null;
+      try {
+        const hello = await fetch(EXE + "/").then((r) => r.json());
+        if (exeToken) {
+          try { exeInfo = await exe("/status", {}, 5000); } catch (e) { exeToken = ""; }
+        }
+        exeStatus.textContent = exeInfo
+          ? `Connected to laptop executor v${exeInfo.version}. Tools: ${Object.entries(exeInfo.tools).map(([k, v]) => k + (v ? " ok" : " missing")).join(", ")}. Folders: ${exeInfo.folders.join("; ") || "none selected"}.`
+          : `Executor v${hello.version} is running on this laptop but not connected. Type the pairing code and press Connect.`;
+      } catch (e) {
+        exeStatus.textContent = "Not connected: the laptop executor is not running. Start it with Start-CCC-Executor.cmd (see laptop/README.md), then press Check.";
+      }
+    }
+    control(exePanel, "Check", refreshExe);
+    control(exePanel, "Connect", async () => {
+      const pair = await fetch(EXE + "/pair", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: exeCode.value.trim() }) }).then((r) => r.json());
+      if (!pair.token) throw new Error(pair.error || "Pairing failed.");
+      exeToken = pair.token;
+      try { sessionStorage.setItem("ccc-exe-token", exeToken); } catch (e) { /* kept in memory only */ }
+      exeCode.value = "";
+      await refreshExe();
+    });
+    control(exePanel, "Disconnect", async () => {
+      try { await exe("/disconnect", {}, 5000); } catch (e) { /* already gone */ }
+      exeToken = "";
+      try { sessionStorage.removeItem("ccc-exe-token"); } catch (e) { /* ignore */ }
+      await refreshExe();
+    });
+    exePanel.prepend(exeStatus, exeCode);
+    const syncModePanels = () => { exePanel.hidden = !modes.laptop.checked; };
+    for (const radio of Object.values(modes)) radio.addEventListener("change", syncModePanels);
+    async function laptopApi(body) {
+      const response = await fetch("/api/supervisor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Local-Token": token },
+        body: JSON.stringify({ channel: "laptop-agent", ...body }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Laptop assistant request failed.");
+      return data;
+    }
+    function waitFor(buttons) {
+      return new Promise((resolve) => {
+        const box = document.createElement("div");
+        for (const [label, value] of buttons) {
+          control(box, label, async () => { box.remove(); resolve(value); });
+        }
+        recovery.after(box);
+        stopWaiters.push(() => { box.remove(); resolve("stop"); });
+      });
+    }
+    const stopWaiters = [];
+    function showPlan(out) {
+      const plan = out.plan || {};
+      const cost = out.cost || { lines: [] };
+      logLine("PLAN: " + (plan.summary || ""));
+      logLine("Target: " + JSON.stringify(plan.target || {}));
+      (plan.steps || []).forEach((step, i) => logLine(`  ${i + 1}. ${step}`));
+      for (const risk of plan.risks || []) logLine("  risk: " + risk);
+      for (const line of cost.lines) logLine("  cost: " + line.item + " -> " + (line.error ? line.error : `${line.monthly} ${line.currency}/month (${line.unit_price} per ${line.unit})`));
+      logLine(`Estimated new monthly cost: ${cost.total_monthly} USD${cost.complete ? "" : " (INCOMPLETE: some prices were not found)"}. Source: ${cost.source || "n/a"}. ${cost.note || ""}`);
+    }
+    async function runLaptop(task, original) {
+      stopRequested = false;
+      lastTask = original || task;
+      lastRunner = runLaptop;
+      recovery.hidden = true;
+      agentLog.replaceChildren();
+      await refreshExe();
+      if (!exeInfo) throw new Error("Connect the laptop executor first (start it, enter the pairing code, press Connect).");
+      agentJob = crypto.randomUUID();
+      await laptopApi({ action: "start", id: agentJob, task, consent: true });
+      stopButton.hidden = false;
+      logLine("Checking identity on your laptop (read-only)...");
+      const run = async (tool, args, extra = {}) => exe("/run", { tool, args, ...extra });
+      const identityRun = await run("az", ["account", "show", "-o", "json"]);
+      let identity = identityRun.exit === 0 ? identityRun.stdout : "az account show failed: " + (identityRun.stderr || identityRun.error || "not signed in. Run az login yourself in a terminal, then retry.");
+      logLine(identityRun.exit === 0 ? "Azure identity (sanitized): " + identity.slice(0, 600) : identity);
+      let results = [];
+      let approvePlan = false;
+      let approveCommands = [];
+      try {
+        for (let step = 1; step <= 60 && !stopRequested; step++) {
+          const out = await laptopApi({ action: "step", id: agentJob, results, identity, laptop: { tools: exeInfo.tools, folders: exeInfo.folders }, approve_plan: approvePlan, approve_commands: approveCommands });
+          results = [];
+          approvePlan = false;
+          approveCommands = [];
+          const last = out.log && out.log.length ? out.log[out.log.length - 1] : null;
+          if (last) {
+            logLine(`[${step}] ${last.thought}`);
+            for (const note of last.notes) logLine("   ! " + note);
+          }
+          if (out.blocked) { logLine("Blocked: " + out.blocked); showRecovery(out.blocked); break; }
+          if (out.done) { logLine("Finished: " + (out.summary || "done")); break; }
+          if (out.status === "stopped") { logLine("Stopped."); break; }
+          if (out.needs_plan_approval) {
+            showPlan(out);
+            const choice = await waitFor([["Approve plan and run", "go"], ["Reject", "stop"]]);
+            if (choice !== "go") { logLine("Plan rejected. Nothing was changed."); break; }
+            approvePlan = true;
+            logLine("Plan approved by you.");
+            continue;
+          }
+          if (out.wait_user) {
+            logLine("Waiting for you: " + out.wait_user);
+            const choice = await waitFor([["I'm done, continue", "go"]]);
+            if (choice === "stop") break;
+            continue;
+          }
+          if (out.held && out.held.length) {
+            for (const held of out.held) logLine(`HELD for your approval: ${held.tool} ${held.args.join(" ")}  (${held.reason})`);
+            const choice = await waitFor([["Approve these commands", "go"], ["Skip them", "skip"]]);
+            if (choice === "stop") break;
+            if (choice === "go") approveCommands = out.held.map((h) => h.key);
+          }
+          for (const command of out.commands) {
+            if (stopRequested) break;
+            const result = await run(command.tool, command.args, { cwd: command.cwd, plan_approved: out.plan_approved === true, approved: command.kind === "approval" });
+            result.key = command.key;
+            results.push(result);
+            const text = (result.stdout || result.stderr || result.error || "").trim().replace(/\s+/g, " ").slice(0, 300);
+            logLine(`  $ ${command.tool} ${command.args.join(" ")}\n    exit ${result.exit === undefined ? "not run" : result.exit}${result.seconds ? " (" + result.seconds + "s)" : ""}: ${text}`);
+          }
+          for (const path of out.reads || []) {
+            const file = await exe("/read", { path });
+            results.push({ tool: "read", path, exit: file.error ? 1 : 0, text: file.text || (file.entries || []).join("\n"), error: file.error });
+            logLine(`  read ${path}: ${file.error || "ok"}`);
+          }
+          if (!out.commands.length && !(out.reads || []).length && !approveCommands.length) await new Promise((r) => setTimeout(r, 1500));
+        }
+      } catch (error) {
+        logLine("Error: " + error.message);
+        showRecovery(error.message);
+      } finally {
+        stopButton.hidden = true;
+        for (const release of stopWaiters.splice(0)) release();
+      }
+    }
     const checksBox = document.createElement("div");
     checksBox.style.whiteSpace = "pre-wrap";
     const checksButton = control(panel, "Check connections", async () => {
@@ -780,14 +949,38 @@
         const tab = await ext("observe", {}, 8000).catch((error) => ({ error: error.message }));
         add("Read-only browser action (read the portal tab)", tab.elements ? "PASS" : "NOT CONFIGURED", tab.elements ? `${tab.elements.length} controls on ${tab.title || tab.url}` : "open the Azure portal via a task first (" + (tab.error || "") + ")");
       } catch (error) { add("Browser extension connected", "FAIL", error.message); }
-      for (const name of ["az account show on laptop", "Read-only Azure query on laptop", "Read a selected local project file", "git status in a selected repo", "Read-only GitHub query"])
-        add(name, "NOT CONFIGURED", "needs the laptop executor (not built yet)");
+      await refreshExe();
+      const todo = [
+        ["az account show on laptop", () => exe("/run", { tool: "az", args: ["account", "show", "--query", "{name:name,tenant:tenantId,user:user.name}", "-o", "json"] }, 60000)],
+        ["Read-only Azure query on laptop", () => exe("/run", { tool: "az", args: ["group", "list", "--query", "length(@)", "-o", "tsv"] }, 60000)],
+        ["Read a selected local project file", async () => {
+          const folder = exeInfo && exeInfo.folders[0];
+          if (!folder) return { error: "no folder selected: start the executor with --folder" };
+          const list = await exe("/read", { path: folder }, 20000);
+          return list.error ? list : { exit: 0, stdout: `${list.entries.length} entries in ${folder}` };
+        }],
+        ["git status in a selected repo", () => exe("/run", { tool: "git", args: ["status", "--short", "--branch"], cwd: exeInfo && exeInfo.folders[0] }, 30000)],
+        ["Read-only GitHub query", () => exe("/run", { tool: "gh", args: ["api", "user", "--jq", ".login"] }, 30000)],
+      ];
+      for (const [name, fn] of todo) {
+        if (!exeInfo) { add(name, "NOT CONFIGURED", "start the laptop executor and press Connect"); continue; }
+        try {
+          const r = await fn();
+          add(name, r.exit === 0 ? "PASS" : (r.ran === false || /not installed|no folder|not signed|Please run/i.test((r.error || "") + (r.stderr || "")) ? "NOT CONFIGURED" : "FAIL"), (r.stdout || r.stderr || r.error || "").trim().replace(/\s+/g, " ").slice(0, 160));
+        } catch (error) { add(name, "FAIL", error.message); }
+      }
       checksBox.textContent = rows.join("\n");
     });
     const sendButton = control(panel, "Send", async () => {
       const text = input.value.trim();
       if (!text) throw new Error("Describe what to deploy.");
       if (!consent.checked) throw new Error("Tick the Azure AI Foundry consent box first.");
+      if (modes.laptop.checked) {
+        input.value = "";
+        status.textContent = "";
+        await runLaptop(text);
+        return;
+      }
       if (modes.browser.checked) {
         input.value = "";
         status.textContent = "";
@@ -807,8 +1000,10 @@
       await refreshHistory();
     });
     // Buttons were created before the inputs; append everything in display order.
-    panel.append(history, log, input, consentLabel, sendButton, stopButton, continueButton, checksButton, checksBox, agentLog, recovery, planBox);
+    panel.append(exePanel, history, log, input, consentLabel, sendButton, stopButton, continueButton, checksButton, checksBox, agentLog, recovery, planBox);
     content.append(panel);
+    syncModePanels();
+    refreshExe();
     refreshHistory().catch((error) => {
       status.textContent = error.message;
     });
