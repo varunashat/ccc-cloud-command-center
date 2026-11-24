@@ -551,11 +551,81 @@
     );
     let current = null;
     const chatTitle = (c) => c.title + " · " + c.mode;
+    log.style.cssText = "max-height:60vh;overflow-y:auto;border:1px solid #293950;border-radius:12px;padding:12px;margin:12px 0;display:flex;flex-direction:column;gap:10px";
+    let stick = true;
+    log.addEventListener("scroll", () => {
+      stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+    });
+    function scrollDown() {
+      if (stick) log.scrollTop = log.scrollHeight;
+    }
+    function addBubble(role, text) {
+      const bubble = document.createElement("div");
+      bubble.style.cssText = "white-space:pre-wrap;overflow-wrap:anywhere;padding:10px 14px;border-radius:14px;max-width:88%;" +
+        (role === "user" ? "align-self:flex-end;background:#1e4f8f;" : "align-self:flex-start;background:#1a2740;");
+      bubble.textContent = text;
+      log.append(bubble);
+      scrollDown();
+      return bubble;
+    }
+    let runBubble = null;
+    let agentJob = null;
+    let agentKind = "browser";
+    let queue = [];
+    let queueTimer = null;
+    let queueFails = 0;
+    function queueEntry(role, text) {
+      queue.push({ role, text });
+      clearTimeout(queueTimer);
+      queueTimer = setTimeout(flushQueue, 800);
+    }
+    async function flushQueue() {
+      if (!agentJob || !queue.length) return;
+      const entries = queue.splice(0);
+      try {
+        const response = await fetch("/api/supervisor", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Local-Token": token },
+          body: JSON.stringify({ channel: "chat-history", action: "note", kind: agentKind, id: agentJob, entries }),
+        });
+        if (!response.ok) throw new Error("not saved");
+        queueFails = 0;
+      } catch (e) {
+        queue.unshift(...entries);
+        if (++queueFails < 6) queueTimer = setTimeout(flushQueue, 2000);
+      }
+    }
+    function userSays(text) {
+      runBubble = null;
+      stick = true;
+      addBubble("user", text);
+      queueEntry("user", text);
+    }
+    async function openSaved(kind, id) {
+      const chat = await fetch("/api/supervisor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Local-Token": token },
+        body: JSON.stringify({ channel: "chat-history", action: "open", kind, id }),
+      }).then((r) => r.json());
+      if (chat.error) throw new Error(chat.error);
+      current = null;
+      runBubble = null;
+      log.replaceChildren();
+      planBox.replaceChildren();
+      stick = true;
+      let group = null;
+      for (const entry of chat.transcript) {
+        if (entry.role === "user") { group = null; addBubble("user", entry.text); continue; }
+        if (!group) group = addBubble("assistant", entry.text);
+        else group.textContent += "\n" + entry.text;
+      }
+      addBubble("assistant", `Saved ${kind} chat (${chat.status || "no status"}). This is a read-only copy; send a new message to continue with a new run.`);
+    }
+
     function paint(conv) {
       current = conv;
       log.replaceChildren();
       for (const m of conv.messages) {
-        const who = m.role === "user" ? "You" : "AI Foundry";
         let text = m.content;
         if (m.role === "assistant") {
           try {
@@ -563,10 +633,7 @@
             text = [p.reply, ...(p.questions || []).map((q) => "? " + q)].filter(Boolean).join("\n");
           } catch (_) {}
         }
-        const row = element("p", "");
-        row.append(element("strong", who + ": "), document.createTextNode(text));
-        row.style.whiteSpace = "pre-wrap";
-        log.append(row);
+        addBubble(m.role === "user" ? "user" : "assistant", text);
       }
       planBox.replaceChildren();
       const plan = conv.plan;
@@ -605,9 +672,18 @@
     }
     async function refreshHistory() {
       const out = await deployApi({ action: "list" });
+      const agents = await fetch("/api/supervisor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Local-Token": token },
+        body: JSON.stringify({ channel: "chat-history", action: "list" }),
+      }).then((r) => r.json()).catch(() => ({ chats: [] }));
+      const rows = [
+        ...out.conversations.map((c) => ({ value: "cloud:" + c.id, label: chatTitle(c), when: c.created })),
+        ...(agents.chats || []).map((c) => ({ value: c.kind + ":" + c.id, label: `${c.title} · ${c.kind} · ${c.status}`, when: c.updated })),
+      ].sort((a, b) => String(b.when).localeCompare(String(a.when)));
       history.replaceChildren(new Option("New chat", ""));
-      out.conversations.forEach((c) => history.add(new Option(chatTitle(c), c.id)));
-      if (current) history.value = current.id;
+      rows.forEach((row) => history.add(new Option(row.label, row.value)));
+      if (current) history.value = "cloud:" + current.id;
     }
     history.onchange = async () => {
       if (!history.value) {
@@ -616,14 +692,16 @@
         planBox.replaceChildren();
         return;
       }
-      const conv = await deployApi({ action: "open", id: history.value });
+      const [kind, id] = [history.value.split(":")[0], history.value.split(":")[1]];
+      if (kind !== "cloud") {
+        await openSaved(kind, id);
+        return;
+      }
+      const conv = await deployApi({ action: "open", id });
       if (modes[conv.mode]) modes[conv.mode].checked = true;
       paint(conv);
     };
-    const agentLog = document.createElement("div");
-    agentLog.style.whiteSpace = "pre-wrap";
     let stopRequested = false;
-    let agentJob = null;
     let resumeUser = null;
     const stopButton = control(panel, "Stop", async () => {
       stopRequested = true;
@@ -651,6 +729,7 @@
       recovery.append(note);
       control(recovery, "Retry", async () => {
         recovery.hidden = true;
+        userSays("Retry");
         await lastRunner("Previous attempt failed (" + reason + "). Read the error, change something concrete, then try again.\n" + lastTask, lastTask);
       });
       if (lastRunner === runAgent) control(recovery, "Suggest another way", async () => {
@@ -660,6 +739,7 @@
         for (const option of res.alternatives) {
           control(box, option.title, async () => {
             recovery.hidden = true;
+            userSays("Try this way: " + option.title);
             await runAgent(option.task, lastTask);
           });
           const detail = document.createElement("small");
@@ -669,8 +749,33 @@
         recovery.append(box);
       });
     }
+    async function autoRecover(reason, attempt, runner) {
+      if (stopRequested || attempt >= 2) {
+        logLine("Stopped trying automatically after " + attempt + " recovery attempt(s). Choose Retry or Suggest another way below, or rephrase the task.");
+        showRecovery(reason);
+        return;
+      }
+      try {
+        if (runner === runAgent) {
+          const res = await deployAgentApi({ action: "alternatives", id: agentJob });
+          const option = res.alternatives[0];
+          if (!option) throw new Error("no alternative suggested");
+          logLine(`Trying another way automatically (${attempt + 1}/2): ${option.title}. ${option.detail}`);
+          await runAgent(option.task, lastTask, attempt + 1);
+        } else {
+          logLine(`Trying a different approach automatically (${attempt + 1}/2). You will be asked to approve the new plan.`);
+          await runLaptop("Previous attempt was blocked (" + reason + "). Use a different approach within the same goal and verify before finishing.\n" + lastTask, lastTask, attempt + 1);
+        }
+      } catch (error) {
+        logLine("Automatic recovery failed: " + error.message);
+        showRecovery(reason);
+      }
+    }
     function logLine(text) {
-      agentLog.append(document.createTextNode(text + "\n"));
+      if (!runBubble) runBubble = addBubble("assistant", "");
+      runBubble.textContent += (runBubble.textContent ? "\n" : "") + text;
+      queueEntry("assistant", text);
+      scrollDown();
     }
     async function deployAgentApi(body) {
       const response = await fetch("/api/supervisor", {
@@ -701,18 +806,21 @@
         window.postMessage({ src: "ccc-page", type: "agent", id, op, ...extra }, location.origin);
       });
     }
-    async function runAgent(task, original) {
+    async function runAgent(task, original, attempt = 0) {
       stopRequested = false;
       lastTask = original || task;
       lastRunner = runAgent;
       recovery.hidden = true;
       approveNext = false;
-      agentLog.replaceChildren();
+      runBubble = null;
+      agentKind = "browser";
+      agentJob = null;
       const ping = await ext("ping", {}, 4000);
       if (!ping || !ping.ok || parseInt(ping.version, 10) < 2)
         throw new Error("Update the CCC browser extension to v2.0 first (see extension/README in the repo).");
       agentJob = crypto.randomUUID();
       await deployAgentApi({ action: "start", id: agentJob, task, consent: true });
+      flushQueue();
       stopButton.hidden = false;
       logLine("Started. Opening the Azure portal in your browser...");
       try {
@@ -728,12 +836,12 @@
           for (const note of out.log.length ? out.log[out.log.length - 1].notes : []) logLine("   ! " + note);
           if (out.blocked || out.status === "blocked") {
             logLine("Blocked: " + (out.blocked || out.blocker));
-            showRecovery(out.blocked || out.blocker);
+            await autoRecover(out.blocked || out.blocker, attempt, runAgent);
             break;
           }
           if (out.done) {
             logLine("Finished: " + (out.summary || "done"));
-            if (/^could not|^unable|^failed/i.test(out.summary || "")) showRecovery(out.summary);
+            if (/^could not|^unable|^failed/i.test(out.summary || "")) await autoRecover(out.summary, attempt, runAgent);
             break;
           }
           if (out.status === "failed" || out.status === "stopped") {
@@ -763,6 +871,8 @@
         logLine("Error: " + error.message);
         showRecovery(error.message);
       } finally {
+        flushQueue();
+        refreshHistory().catch(() => {});
         stopButton.hidden = true;
         continueButton.hidden = true;
       }
@@ -856,16 +966,19 @@
       for (const line of cost.lines) logLine("  cost: " + line.item + " -> " + (line.error ? line.error : `${line.monthly} ${line.currency}/month (${line.unit_price} per ${line.unit})`));
       logLine(`Estimated new monthly cost: ${cost.total_monthly} USD${cost.complete ? "" : " (INCOMPLETE: some prices were not found)"}. Source: ${cost.source || "n/a"}. ${cost.note || ""}`);
     }
-    async function runLaptop(task, original) {
+    async function runLaptop(task, original, attempt = 0) {
       stopRequested = false;
       lastTask = original || task;
       lastRunner = runLaptop;
       recovery.hidden = true;
-      agentLog.replaceChildren();
+      runBubble = null;
+      agentKind = "laptop";
+      agentJob = null;
       await refreshExe();
       if (!exeInfo) throw new Error("Connect the laptop executor first (start it, enter the pairing code, press Connect).");
       agentJob = crypto.randomUUID();
       await laptopApi({ action: "start", id: agentJob, task, consent: true });
+      flushQueue();
       stopButton.hidden = false;
       logLine("Checking identity on your laptop (read-only)...");
       const run = async (tool, args, extra = {}) => exe("/run", { tool, args, ...extra });
@@ -886,7 +999,7 @@
             logLine(`[${step}] ${last.thought}`);
             for (const note of last.notes) logLine("   ! " + note);
           }
-          if (out.blocked) { logLine("Blocked: " + out.blocked); showRecovery(out.blocked); break; }
+          if (out.blocked) { logLine("Blocked: " + out.blocked); await autoRecover(out.blocked, attempt, runLaptop); break; }
           if (out.done) { logLine("Finished: " + (out.summary || "done")); break; }
           if (out.status === "stopped") { logLine("Stopped."); break; }
           if (out.needs_plan_approval) {
@@ -928,6 +1041,8 @@
         logLine("Error: " + error.message);
         showRecovery(error.message);
       } finally {
+        flushQueue();
+        refreshHistory().catch(() => {});
         stopButton.hidden = true;
         for (const release of stopWaiters.splice(0)) release();
       }
@@ -975,6 +1090,7 @@
       const text = input.value.trim();
       if (!text) throw new Error("Describe what to deploy.");
       if (!consent.checked) throw new Error("Tick the Azure AI Foundry consent box first.");
+      userSays(text);
       if (modes.laptop.checked) {
         input.value = "";
         status.textContent = "";
@@ -1000,7 +1116,7 @@
       await refreshHistory();
     });
     // Buttons were created before the inputs; append everything in display order.
-    panel.append(exePanel, history, log, input, consentLabel, sendButton, stopButton, continueButton, checksButton, checksBox, agentLog, recovery, planBox);
+    panel.append(exePanel, history, log, input, consentLabel, sendButton, stopButton, continueButton, checksButton, checksBox, recovery, planBox);
     content.append(panel);
     syncModePanels();
     refreshExe();

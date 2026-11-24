@@ -12,6 +12,7 @@ import threading
 import uuid
 from urllib.parse import urlparse
 
+import agent_store
 import hub_jobs as hub
 from supervisor import read, save
 
@@ -200,7 +201,7 @@ def dispatch(owner, body, chat):
         if previous:
             job['history'].append('results: ' + '; '.join(str(r)[:80] for r in previous[:6]))
     obs = clean_observation(body.get('observation'))
-    message = ('TASK: ' + job['task'] + '\nDONE SO FAR: ' + ' | '.join(job['history'][-14:]) +
+    message = ('TASK: ' + job['task'] + '\nPREVIOUS WORK (operator history, use if the task refers to earlier work):\n' + agent_store.memory(owner, job['id']) + '\nDONE SO FAR: ' + ' | '.join(job['history'][-14:]) +
                '\nPAGE: ' + obs['title'] + ' ' + obs['url'] + '\nPAGE TEXT: ' + obs['text'] +
                '\nCONTROLS:\n' + controls(obs))
     answer, model = chat([{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': message}], 1500)

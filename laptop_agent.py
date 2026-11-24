@@ -13,6 +13,7 @@ import urllib.parse
 import urllib.request
 import uuid
 
+import agent_store
 import hub_jobs as hub
 from laptop import policy
 from supervisor import read, save
@@ -166,7 +167,7 @@ def dispatch(owner, body, chat, fetch=None):
         save(path, job)
     identity = policy.sanitize(json.dumps(body.get('identity'))[:1500]) if body.get('identity') else 'not checked yet'
     state = 'PLAN APPROVED by operator: you may run write commands.' if job['plan_approved'] else ('PLAN AWAITING approval.' if job['plan'] else 'No plan yet: discover, then give the PLAN.')
-    message = (f"TASK: {job['task']}\nSTATE: {state}\nLAPTOP: {policy.sanitize(json.dumps(body.get('laptop') or {}), 600)}\nIDENTITY: {identity}\n"
+    message = (f"TASK: {job['task']}\nPREVIOUS WORK (operator history, use if the task refers to earlier work):\n{agent_store.memory(owner, job['id'])}\nSTATE: {state}\nLAPTOP: {policy.sanitize(json.dumps(body.get('laptop') or {}), 600)}\nIDENTITY: {identity}\n"
                f"HISTORY: {' | '.join(job['history'][-12:])}\nPLAN: {json.dumps(job['plan'])[:2500] if job['plan'] else 'none'}\nLATEST RESULTS:\n{evidence([r for r in results if isinstance(r, dict)])}")
     answer, model = chat([{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': message}], 2000)
     reply = _parse(answer)

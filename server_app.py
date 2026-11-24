@@ -27,6 +27,7 @@ import hub_report
 import deploy_chat
 import browser_agent
 import laptop_agent
+import agent_store
 import live_workflow
 import weather_console
 
@@ -404,6 +405,8 @@ class Handler(app.Handler):
                         return self.send(200, {'filename': name, 'pdf_base64': base64.b64encode(pdf).decode('ascii')})
                     answer = hub_jobs.dispatch(who, payload, caller)
                     return self.send(200, answer)
+                if payload.get('channel') == 'chat-history':
+                    return self.send(200, agent_store.dispatch(current_user(), payload))
                 if payload.get('channel') == 'laptop-agent':
                     try:
                         return self.send(200, laptop_agent.dispatch(current_user(), payload, ai_assist.chat))

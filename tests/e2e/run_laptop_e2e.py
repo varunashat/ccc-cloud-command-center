@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 import hub_jobs as hub  # noqa: E402
 import laptop_agent as la  # noqa: E402
+import agent_store  # noqa: E402
 from laptop import executor  # noqa: E402
 from playwright.sync_api import sync_playwright  # noqa: E402
 
@@ -45,7 +46,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
         try:
-            out = la.dispatch('t@x', body, chat, lambda url: {'Items': []})
+            out = {'conversations': []} if body.get('channel') == 'deploy-chat' else agent_store.dispatch('t@x', body) if body.get('channel') == 'chat-history' else la.dispatch('t@x', body, chat, lambda url: {'Items': []})
             code = 200
         except ValueError as error:
             out, code = {'error': str(error)}, 400
@@ -97,10 +98,38 @@ def main():
             text = page.inner_text('#assessment-workspace')
             print('LOG:\n' + text[text.find('PLAN:') - 200: text.find('Finished:') + 120])
             assert 'HELD for your approval: git push' in text
+            assert 'Stage the files in the demo repo' in text, 'your own message must stay visible'
+            page.wait_for_timeout(2500)
+            chats = agent_store.dispatch('t@x', {'action': 'list'})['chats']
+            saved = agent_store.dispatch('t@x', {'action': 'open', 'kind': 'laptop', 'id': chats[0]['id']})
+            assert saved['transcript'][0] == {'role': 'user', 'text': 'Stage the files in the demo repo'}, saved['transcript'][:1]
+            assert any('Finished' in e['text'] for e in saved['transcript']), 'transcript not saved'
+            page.reload(); page.wait_for_selector('text=Run on my laptop')
+            page.wait_for_timeout(2000)
+            print('OPTIONS:', page.eval_on_selector('select[aria-label="Deployment chat history"]', 'e=>[...e.options].map(o=>o.value+"|"+o.text)'), 'ERR:', errors)
+            page.select_option('select[aria-label="Deployment chat history"]', index=1)
+            page.wait_for_selector('text=read-only copy', timeout=10000)
+            assert 'Stage the files in the demo repo' in page.inner_text('#assessment-workspace'), 'history did not reopen'
+            print('chat history persisted and reopened')
             assert 'exit 0' in text and 'Finished:' in text
             staged = subprocess.run(['git', 'status', '--short'], cwd=repo, capture_output=True, text=True).stdout
             assert 'A  a.txt' in staged, staged
             assert not errors, errors
+            # automatic recovery: first attempt blocked, the page retries on its own without being asked
+            SCRIPT[:] = [{'thought': 'try', 'blocked': 'quota exceeded in region'}, {'thought': 'other region', 'done': True, 'summary': 'finished via another approach'}]
+            calls['n'] = 0
+            page.click('text=Run on my laptop')
+            for box in page.query_selector_all('#assessment-workspace input[type=checkbox]'):
+                if not box.is_checked(): box.check()
+            page.fill('textarea[aria-label="What should be deployed"]', 'Make something that will be blocked first')
+            page.click('button:has-text("Send")')
+            try:
+                page.wait_for_function("document.body.innerText.includes('Finished: finished via another approach')", timeout=20000)
+            except Exception:
+                print('TAIL:', page.inner_text('#assessment-workspace')[-1200:]); raise
+            body = page.inner_text('#assessment-workspace')
+            assert 'Blocked: quota exceeded' in body and 'Trying a different approach automatically (1/2)' in body, body[-800:]
+            print('automatic recovery worked')
             print('LAPTOP E2E PASSED')
             browser.close()
 
