@@ -36,7 +36,7 @@
   function ready(){const c=context();if(!c.tenant||!c.subscriptions.length)throw new Error('Load a customer directory and select subscriptions first.');return c;}
   const signInBox=document.createElement('div');scopeBox.append(signInBox);
   control(signInBox,'Refresh selected directory sign-in',async()=>{
-    const c=ready();
+    const c=context();if(!c.tenant)throw new Error('Load directories and select the customer first.');
     const response=await fetch('/api/supervisor',{method:'POST',headers:{'Content-Type':'application/json','X-Local-Token':token},body:JSON.stringify({action:'refresh-tenant-signin',tenant:c.tenant})});
     const flow=await response.json();if(!response.ok)throw new Error(flow.error||'Could not start sign-in.');
     const instructions=document.createElement('p');const link=element('a','Open Microsoft sign-in');link.href=flow.url;link.target='_blank';link.rel='noopener';
