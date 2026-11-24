@@ -915,11 +915,22 @@
     let exeToken = "";
     try { exeToken = sessionStorage.getItem("ccc-exe-token") || ""; } catch (e) { exeToken = ""; }
     let exeInfo = null;
+    // Chrome's Local Network Access needs the request to declare its target; fall back for older browsers.
+    async function localFetch(url, opts) {
+      for (const space of ["loopback", "local", null]) {
+        try {
+          return await fetch(url, space ? { ...opts, targetAddressSpace: space } : opts);
+        } catch (e) {
+          if (e && e.name === "AbortError") throw e;
+          if (space === null) throw e;
+        }
+      }
+    }
     async function exe(path, body, timeout = 650000) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeout);
       try {
-        const response = await fetch(EXE + path, {
+        const response = await localFetch(EXE + path, {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Executor-Token": exeToken },
           body: JSON.stringify(body || {}),
@@ -935,7 +946,7 @@
     async function refreshExe() {
       exeInfo = null;
       try {
-        const hello = await fetch(EXE + "/").then((r) => r.json());
+        const hello = await localFetch(EXE + "/", {}).then((r) => r.json());
         if (exeToken) {
           try { exeInfo = await exe("/status", {}, 5000); } catch (e) { exeToken = ""; }
         }
@@ -943,7 +954,7 @@
           ? `Connected to laptop executor v${exeInfo.version}. Tools: ${Object.entries(exeInfo.tools).map(([k, v]) => k + (v ? " ok" : " missing")).join(", ")}. Folders: ${exeInfo.folders.join("; ") || "none selected"}.`
           : `Executor v${hello.version} is running on this laptop but not connected. Type the pairing code and press Connect.`;
       } catch (e) {
-        exeStatus.textContent = "Not connected: the laptop executor is not running. Start it with Start-CCC-Executor.cmd (see laptop/README.md), then press Check.";
+        exeStatus.textContent = "Cannot reach the laptop executor from this page. If its window is open, Chrome is blocking this site from your computer: click the icon left of the address bar, Site settings, set Local network access to Allow, reload and press Check. Otherwise start Start-CCC-Executor.cmd first.";
       }
     }
     control(exePanel, "Check", refreshExe);
