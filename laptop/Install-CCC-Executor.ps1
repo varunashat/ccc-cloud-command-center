@@ -15,18 +15,19 @@ foreach ($t in 'az', 'git', 'gh') {
   if (Get-Command $t -ErrorAction SilentlyContinue) { Write-Host "$t : found" } else { Write-Host "$t : NOT found (optional; features that need it will report 'not installed')" -ForegroundColor Yellow }
 }
 
-Add-Type -AssemblyName System.Windows.Forms
+# Folder choice is typed (works under Constrained Language Mode, which blocks pickers and COM objects).
 $folders = New-Object System.Collections.Generic.List[string]
-do {
-  $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
-  $dlg.Description = 'Choose a folder the CCC assistant may read and run git in (Cancel when finished)'
-  if ($dlg.ShowDialog() -eq 'OK') { $folders.Add($dlg.SelectedPath); Write-Host "Added: $($dlg.SelectedPath)" } else { break }
-} while ($true)
+Write-Host "`nType a folder the CCC assistant may read and run git in (for example C:\Work\my-repo). Press Enter on an empty line when finished."
+while ($true) {
+  $p = (Read-Host 'Folder').Trim().Trim('"')
+  if (-not $p) { break }
+  if (Test-Path -LiteralPath $p -PathType Container) { $folders.Add((Resolve-Path -LiteralPath $p).Path); Write-Host "Added: $p" } else { Write-Host "Not a folder, skipped: $p" -ForegroundColor Yellow }
+}
 Set-Content (Join-Path $dest 'folders.txt') $folders
-Write-Host "Selected folders saved in $dest\folders.txt (edit that file to change them)."
+Write-Host "Folders saved in $dest\folders.txt (edit that file any time to change them)."
 
-$lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Start CCC Executor.lnk'
-$sh = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
-$sh.TargetPath = Join-Path $dest 'Start-CCC-Executor.cmd'; $sh.WorkingDirectory = $dest; $sh.Save()
-Write-Host "`nDone. Double-click 'Start CCC Executor' on your desktop, note the pairing code, then open Environment & Deployment > Run on my laptop > Connect."
+# Plain launcher on the desktop (no COM / shortcut object needed).
+$desk = [Environment]::GetFolderPath('Desktop')
+Set-Content (Join-Path $desk 'Start CCC Executor.cmd') ('@echo off' + "`r`n" + 'call "' + (Join-Path $dest 'Start-CCC-Executor.cmd') + '"')
+Write-Host "`nDone. Double-click 'Start CCC Executor.cmd' on your desktop, note the pairing code, then open Environment & Deployment > Run on my laptop > Connect."
 Write-Host "Sign in yourself with:  az login   and   gh auth login   (MFA included). The executor never sees your password."
