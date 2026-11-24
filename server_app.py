@@ -30,6 +30,7 @@ import laptop_agent
 import agent_store
 import live_workflow
 import weather_console
+import weather_page
 
 CLI_CLIENT = '04b07795-8ddb-461a-bbee-02f9e1bf7b46'          # Microsoft Azure CLI (public client, first-party)
 ARM_SCOPE = ['https://management.azure.com/.default']
@@ -327,7 +328,7 @@ class Handler(app.Handler):
         if self.path == '/tam' or self.path.startswith('/tam/'):
             return self._tam('GET')
         if not self._user():
-            if self.path == '/':
+            if self.path in ('/', '/weather'):
                 return self.send(200, LOGIN_PAGE, 'text/html')
             return self.send(401, {'error': 'Sign in first.'})
         if self.path == '/sow-builder':
@@ -336,6 +337,8 @@ class Handler(app.Handler):
             self.send_header('Content-Length', '0')
             self.end_headers()
             return
+        if self.path == '/weather':
+            return self.send(200, weather_page.PAGE.replace('__TOKEN__', app.TOKEN), 'text/html')
         if self.path == '/':
             self._local_dms_dashboard = True
             page = (app.ROOT / 'dashboard.html').read_text(encoding='utf-8').replace('__TOKEN__', app.TOKEN)
