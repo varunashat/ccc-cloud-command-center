@@ -42,7 +42,7 @@
     const instructions=document.createElement('p');const link=element('a','Open Microsoft sign-in');link.href=flow.url;link.target='_blank';link.rel='noopener';
     instructions.append(link,element('span',' and enter this code: '),element('strong',flow.code));signInBox.append(instructions);
     const poll=async()=>{try{const r=await fetch('/auth/poll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fid:flow.fid})});const state=await r.json();
-      if(state.status==='done'){instructions.textContent='Microsoft sign-in refreshed. You can resume the selected customer run.';await load();return;}
+      if(state.status==='done'){instructions.textContent='Microsoft sign-in refreshed. Reloading subscriptions.';document.getElementById('dc-tenant').dispatchEvent(new Event('change',{bubbles:true}));return;}
       if(state.status==='pending'){setTimeout(poll,3000);return;}
       instructions.textContent=state.message||state.error||'Sign-in did not complete.';
     }catch(error){instructions.textContent=error.message;}};
