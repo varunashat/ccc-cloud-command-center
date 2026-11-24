@@ -7,6 +7,7 @@ operator's own signed-in portal tab. Page text is untrusted data. Passwords, key
 it hands those steps back to the operator.
 """
 import json
+import attachments
 import re
 import threading
 import uuid
@@ -161,7 +162,7 @@ def dispatch(owner, body, chat):
                 raise ValueError('Job already exists.')
             folder.mkdir(parents=True, exist_ok=True)
             job = {'id': key, 'task': task.strip(), 'created': hub.now(), 'status': 'running', 'stop': False, 'steps': 0, 'log': [], 'history': [],
-                   'context': str(body.get('context') or '')[-3500:], 'inbox': []}
+                   'context': str(body.get('context') or '')[-3500:], 'inbox': [], 'images': attachments.clean(body.get('images'))}
             save(path, job)
             return job
         if not path.exists():
@@ -174,6 +175,7 @@ def dispatch(owner, body, chat):
             if not text or job['stop'] or job['status'] in ('stopped', 'done', 'failed', 'blocked'):
                 return {'accepted': False}
             job['inbox'] = (job.get('inbox', []) + [text])[-10:]
+            job['images'] = (job.get('images', []) + attachments.clean(body.get('images')))[-attachments.MAX_IMAGES:]
             if job['status'] == 'waiting':
                 job['status'] = 'running'
             save(path, job)
@@ -210,6 +212,7 @@ def dispatch(owner, body, chat):
             return {**job, 'actions': [], 'done': False}
         job['status'] = 'running'
         inbox, job['inbox'] = job.get('inbox', []), []
+        images, job['images'] = job.get('images', []), []
         previous = body.get('results') if isinstance(body.get('results'), list) else []
         if previous:
             job['history'].append('results: ' + '; '.join(str(r)[:80] for r in previous[:6]))
@@ -217,7 +220,7 @@ def dispatch(owner, body, chat):
     message = ('TASK: ' + job['task'] + '\nCONVERSATION SO FAR:\n' + job.get('context', '')[-2500:] + '\nNEW OPERATOR MESSAGES: ' + (' | '.join(inbox) or 'none') + '\nPREVIOUS WORK (operator history, use if the task refers to earlier work):\n' + agent_store.memory(owner, job['id']) + '\nDONE SO FAR: ' + ' | '.join(job['history'][-14:]) +
                '\nPAGE: ' + obs['title'] + ' ' + obs['url'] + '\nPAGE TEXT: ' + obs['text'] +
                '\nCONTROLS:\n' + controls(obs))
-    answer, model = chat([{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': message}], 1500)
+    answer, model = attachments.ask(chat, SYSTEM, message, 1500, images)
     reply = _parse(answer)
     pending = []
     allowed, notes = vet(reply['actions'], obs, job['task'], tuple(job.get('approved', [])), pending)

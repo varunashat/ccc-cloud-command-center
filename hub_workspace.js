@@ -604,15 +604,65 @@
     let runPromise = null;
     let jobReady = false;
     let startContext = "";
+    let pictures = [];
+    let startImages = [];
+    const thumbs = document.createElement("div");
+    thumbs.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin:6px 0;";
+    function shrink(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const scale = Math.min(1, 1400 / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          let quality = 0.85;
+          let data = canvas.toDataURL("image/jpeg", quality);
+          while (data.length > 1200000 && quality > 0.4) { quality -= 0.15; data = canvas.toDataURL("image/jpeg", quality); }
+          data.length > 1500000 ? reject(new Error("Picture is too large.")) : resolve(data);
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("That file is not a picture.")); };
+        img.src = url;
+      });
+    }
+    function drawThumbs() {
+      thumbs.replaceChildren(...pictures.map((src, index) => {
+        const box = document.createElement("span");
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = "Attached picture " + (index + 1);
+        img.style.cssText = "height:64px;border-radius:8px;border:1px solid #2a3a57;";
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.textContent = "x";
+        remove.setAttribute("aria-label", "Remove picture " + (index + 1));
+        remove.onclick = () => { pictures.splice(index, 1); drawThumbs(); };
+        box.append(img, remove);
+        return box;
+      }));
+    }
+    async function addPictures(files) {
+      for (const file of [...files].filter((f) => /^image\//.test(f.type))) {
+        if (pictures.length >= 4) { status.textContent = "Up to 4 pictures per message."; break; }
+        try { pictures.push(await shrink(file)); } catch (error) { status.textContent = error.message; }
+      }
+      drawThumbs();
+    }
     const sayWaiters = [];
     function threadContext() {
       return [...log.children].map((b) => (b.style.alignSelf === "flex-end" ? "Operator: " : "Assistant: ") + b.textContent).join("\n").slice(-2500);
     }
-    async function sayToRun(text) {
+    async function sayToRun(text, images = []) {
       for (let i = 0; i < 40 && runPromise && !jobReady; i++) await new Promise((r) => setTimeout(r, 100));
       if (!agentJob || !jobReady) return false;
       const api = agentKind === "laptop" ? laptopApi : deployAgentApi;
-      const res = await api({ action: "say", id: agentJob, text });
+      const res = await api({ action: "say", id: agentJob, text, images });
       if (!res.accepted) return false;
       if (resumeUser) resumeUser();
       for (const release of sayWaiters.splice(0)) release();
@@ -846,7 +896,7 @@
       if (!ping || !ping.ok || parseInt(ping.version, 10) < 2)
         throw new Error("Update the CCC browser extension to v2.0 first (see extension/README in the repo).");
       agentJob = crypto.randomUUID();
-      await deployAgentApi({ action: "start", id: agentJob, task, consent: true, context: startContext || threadContext() });
+      await deployAgentApi({ action: "start", id: agentJob, task, consent: true, context: startContext || threadContext(), images: startImages.splice(0) });
       startContext = "";
       jobReady = true;
       flushQueue();
@@ -1019,7 +1069,7 @@
       await refreshExe();
       if (!exeInfo) throw new Error("Connect the laptop executor first (start it, enter the pairing code, press Connect).");
       agentJob = crypto.randomUUID();
-      await laptopApi({ action: "start", id: agentJob, task, consent: true, context: startContext || threadContext() });
+      await laptopApi({ action: "start", id: agentJob, task, consent: true, context: startContext || threadContext(), images: startImages.splice(0) });
       startContext = "";
       jobReady = true;
       flushQueue();
@@ -1135,17 +1185,21 @@
       checksBox.textContent = rows.join("\n");
     });
     const sendButton = control(panel, "Send", async () => {
-      const text = input.value.trim();
-      if (!text) throw new Error("Describe what to deploy.");
+      const typed = input.value.trim();
+      if (!typed && !pictures.length) throw new Error("Describe what to deploy, or attach a picture.");
       if (!consent.checked) throw new Error("Tick the Azure AI Foundry consent box first.");
+      const text = typed || "Look at the attached picture(s) and do what they show or ask.";
+      const imgs = pictures.splice(0);
+      drawThumbs();
       const earlier = threadContext();
-      userSays(text);
+      userSays(text + (imgs.length ? "\n[" + imgs.length + " picture" + (imgs.length > 1 ? "s" : "") + " attached]" : ""));
       if (modes.laptop.checked || modes.browser.checked) {
         input.value = "";
         status.textContent = "";
-        if (runPromise && !stopRequested && (await sayToRun(text))) return;
+        if (runPromise && !stopRequested && (await sayToRun(text, imgs))) return;
         if (runPromise) await runPromise;
         startContext = earlier;
+        startImages = imgs;
         startRun(modes.laptop.checked ? runLaptop : runAgent, text);
         return;
       }
@@ -1155,7 +1209,7 @@
         paint(await deployApi({ action: "new", id, mode }));
       }
       status.textContent = "AI Foundry is planning...";
-      const conv = await deployApi({ action: "message", id: current.id, message: text, consent: true });
+      const conv = await deployApi({ action: "message", id: current.id, message: text, consent: true, images: imgs });
       input.value = "";
       status.textContent = "";
       paint(conv);
@@ -1191,9 +1245,27 @@
       recognition.start();
       mic.textContent = "Stop speaking";
     };
-    voiceRow.append(mic, voiceLang, element("small", " Enter sends, Shift+Enter adds a line. You can type while it works."));
+    const attach = element("button", "Attach picture");
+    attach.type = "button";
+    const picker = document.createElement("input");
+    picker.type = "file";
+    picker.accept = "image/*";
+    picker.multiple = true;
+    picker.hidden = true;
+    picker.onchange = async () => { await addPictures(picker.files); picker.value = ""; };
+    attach.onclick = () => picker.click();
+    input.addEventListener("paste", (event) => {
+      const files = [...(event.clipboardData ? event.clipboardData.files : [])].filter((f) => /^image\//.test(f.type));
+      if (files.length) { event.preventDefault(); addPictures(files); }
+    });
+    input.addEventListener("dragover", (event) => event.preventDefault());
+    input.addEventListener("drop", (event) => {
+      const files = [...(event.dataTransfer ? event.dataTransfer.files : [])].filter((f) => /^image\//.test(f.type));
+      if (files.length) { event.preventDefault(); addPictures(files); }
+    });
+    voiceRow.append(attach, picker, mic, voiceLang, element("small", " Enter sends, Shift+Enter adds a line. You can type while it works. Paste or drop a screenshot to send it."));
     // Buttons were created before the inputs; append everything in display order.
-    panel.append(exePanel, history, log, input, voiceRow, consentLabel, sendButton, stopButton, continueButton, checksButton, checksBox, recovery, planBox);
+    panel.append(exePanel, history, log, input, thumbs, voiceRow, consentLabel, sendButton, stopButton, continueButton, checksButton, checksBox, recovery, planBox);
     content.append(panel);
     syncModePanels();
     refreshExe();

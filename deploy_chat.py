@@ -6,6 +6,7 @@ Two modes:
            which drives their own Edge/Chrome signed in to the Azure portal; AI tokens are billed to their Foundry.
 """
 import json
+import attachments
 import re
 import threading
 import uuid
@@ -93,8 +94,15 @@ def dispatch(owner, body, chat, scope=None):
             system += ' Selected customer scope: ' + json.dumps(scope)
         messages = [{'role': 'system', 'content': system}]
         messages += [{'role': m['role'], 'content': m['content']} for m in conversation['messages']]
-        messages.append({'role': 'user', 'content': text})
-        answer, model = chat(messages, 3000)
+        pictures = attachments.clean(body.get('images'))
+        messages.append({'role': 'user', 'content': attachments.content(text + (attachments.NOTE if pictures else ''), pictures)})
+        try:
+            answer, model = chat(messages, 3000)
+        except ValueError:
+            if not pictures:
+                raise
+            messages[-1] = {'role': 'user', 'content': text + '\n(Pictures were attached but the model could not read them: say so briefly and work from the text.)'}
+            answer, model = chat(messages, 3000)
         parsed = _parse(answer)
         at = hub.now()
         conversation['messages'] += [{'role': 'user', 'content': text, 'at': at},

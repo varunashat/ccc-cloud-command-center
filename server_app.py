@@ -384,7 +384,7 @@ class Handler(app.Handler):
         if self.path == '/api/supervisor':
             try:
                 size = int(self.headers.get('Content-Length', '0'))
-                if not 0 < size <= 120000:
+                if not 0 < size <= 7000000:
                     return self.send(400, {'error': 'Invalid job request length.'})
                 payload = json.loads(self.rfile.read(size))
                 if not isinstance(payload, dict):

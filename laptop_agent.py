@@ -7,6 +7,7 @@ destructive / scope-changing commands are held for approval of that exact comman
 """
 import hashlib
 import json
+import attachments
 import re
 import threading
 import urllib.parse
@@ -139,7 +140,7 @@ def dispatch(owner, body, chat, fetch=None):
             folder.mkdir(parents=True, exist_ok=True)
             job = {'id': path.stem, 'task': task.strip(), 'created': hub.now(), 'status': 'running', 'stop': False, 'steps': 0, 'log': [], 'history': [],
                    'plan': None, 'cost': None, 'plan_approved': False, 'approved': [], 'failures': {},
-                   'context': str(body.get('context') or '')[-3500:], 'inbox': []}
+                   'context': str(body.get('context') or '')[-3500:], 'inbox': [], 'images': attachments.clean(body.get('images'))}
             save(path, job)
             return job
         if not path.exists():
@@ -152,6 +153,7 @@ def dispatch(owner, body, chat, fetch=None):
             if not text or job['stop'] or job['status'] in ('stopped', 'done', 'failed', 'blocked'):
                 return {'accepted': False}
             job['inbox'] = (job.get('inbox', []) + [text])[-10:]
+            job['images'] = (job.get('images', []) + attachments.clean(body.get('images')))[-attachments.MAX_IMAGES:]
             if job['status'] in ('waiting', 'awaiting_plan_approval'):
                 job['status'] = 'running'
             save(path, job)
@@ -179,6 +181,7 @@ def dispatch(owner, body, chat, fetch=None):
         if job['status'] in ('waiting',):
             job['status'] = 'running'
         inbox, job['inbox'] = job.get('inbox', []), []
+        images, job['images'] = job.get('images', []), []
         if inbox and job['plan'] and not job['plan_approved']:
             job['plan'] = None  # the operator changed something: a fresh plan is needed before any write command
         results = body.get('results') if isinstance(body.get('results'), list) else []
@@ -190,7 +193,7 @@ def dispatch(owner, body, chat, fetch=None):
     state = 'PLAN APPROVED by operator: you may run write commands.' if job['plan_approved'] else ('PLAN AWAITING approval.' if job['plan'] else 'No plan yet: discover, then give the PLAN.')
     message = (f"TASK: {job['task']}\nCONVERSATION SO FAR:\n{job.get('context', '')[-2500:]}\nNEW OPERATOR MESSAGES: {' | '.join(inbox) or 'none'}\nPREVIOUS WORK (operator history, use if the task refers to earlier work):\n{agent_store.memory(owner, job['id'])}\nSTATE: {state}\nLAPTOP: {policy.sanitize(json.dumps(body.get('laptop') or {}), 600)}\nIDENTITY: {identity}\n"
                f"HISTORY: {' | '.join(job['history'][-12:])}\nPLAN: {json.dumps(job['plan'])[:2500] if job['plan'] else 'none'}\nLATEST RESULTS:\n{evidence([r for r in results if isinstance(r, dict)])}")
-    answer, model = chat([{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': message}], 2000)
+    answer, model = attachments.ask(chat, SYSTEM, message, 2000, images)
     reply = _parse(answer)
     with LOCK:
         job = read(path)
