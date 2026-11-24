@@ -39,7 +39,7 @@
     const c=context();if(!c.tenant)throw new Error('Load directories and select the customer first.');
     const response=await fetch('/api/supervisor',{method:'POST',headers:{'Content-Type':'application/json','X-Local-Token':token},body:JSON.stringify({action:'refresh-tenant-signin',tenant:c.tenant})});
     const flow=await response.json();if(!response.ok)throw new Error(flow.error||'Could not start sign-in.');
-    const instructions=document.createElement('p');const link=element('a','Open Microsoft sign-in');link.href=flow.url;link.target='_blank';link.rel='noopener';
+    const instructions=document.createElement('p');instructions.append(element('span','Directory '+c.tenant+' · '));const link=element('a','Open Microsoft sign-in');link.href=flow.url;link.target='_blank';link.rel='noopener';
     instructions.append(link,element('span',' and enter this code: '),element('strong',flow.code));signInBox.append(instructions);
     const poll=async()=>{try{const r=await fetch('/auth/poll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fid:flow.fid})});const state=await r.json();
       if(state.status==='done'){instructions.textContent='Microsoft sign-in refreshed. Reloading subscriptions.';document.getElementById('dc-tenant').dispatchEvent(new Event('change',{bubbles:true}));return;}
@@ -100,6 +100,17 @@
   document.getElementById('dc-sublist')?.addEventListener('change',rememberScope);
   const tenantSelect=document.getElementById('dc-tenant'),subList=document.getElementById('dc-sublist');
   if(tenantSelect&&subList){
+    let directoryRequest=0,subscriptionRequest=0;
+    async function loadSubscriptions(){const request=++subscriptionRequest;const tenant=tenantSelect.value;subList.replaceChildren();if(!tenant)return;
+      const data=await dcRun('disc_subscriptions',{tenant});if(request!==subscriptionRequest||tenant!==tenantSelect.value||!data?.subscriptions)return;
+      for(const subscription of data.subscriptions){const label=element('label','');const input=document.createElement('input');input.type='checkbox';input.className='dc-sub';input.value=subscription.id;input.checked=subscription.state==='Enabled';input.disabled=subscription.state!=='Enabled';label.append(input,element('span',subscription.name+' · '+subscription.id+' · '+subscription.state));subList.append(label);}
+    }
+    document.getElementById('dc-tenants').onclick=async()=>{const request=++directoryRequest;const selected=tenantSelect.value||remembered?.tenant;const data=await dcRun('disc_tenants');if(request!==directoryRequest||!data?.tenants)return;
+      tenantSelect.replaceChildren();for(const tenant of data.tenants)tenantSelect.add(new Option(tenant.name+' · '+tenant.id,tenant.id));
+      if(selected&&[...tenantSelect.options].some(option=>option.value===selected))tenantSelect.value=selected;
+      await loadSubscriptions();
+    };
+    tenantSelect.onchange=loadSubscriptions;
     const restore=()=>{
       if(!remembered)return;
       if(!restoredTenant&&[...tenantSelect.options].some(option=>option.value===remembered.tenant)){
