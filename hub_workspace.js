@@ -92,6 +92,12 @@
   scopeBox.addEventListener('change',event=>{if(event.target===document.getElementById('dc-tenant'))document.getElementById('dc-sublist').replaceChildren();shownJob=null;currentJobs=[];selectedLabel.textContent=customer()+' · Select authorized subscriptions.';render();load().catch(error=>{status.textContent=error.message;});});
   window.addEventListener('hashchange',navigate);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',navigate);else navigate();
+  function syncWorkspaceHeader(){const page=pages[location.hash],crumb=document.getElementById('ccc-crumb');if(!page)return;
+    const text='Cloud Command Center / Assessments / '+page[0];if(crumb&&crumb.textContent!==text)crumb.textContent=text;
+    const pageTitle=page[0]+' · Cloud Command Center';if(document.title!==pageTitle)document.title=pageTitle;}
+  function watchHeader(){const crumb=document.getElementById('ccc-crumb');if(crumb)new MutationObserver(syncWorkspaceHeader).observe(crumb,{childList:true,subtree:true});syncWorkspaceHeader();}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watchHeader);else watchHeader();
+  window.addEventListener('hashchange',syncWorkspaceHeader);
 
   const selectionKey='ccc-azure-scope:'+window.CCC_SERVER.user;
   let restoredTenant=false,remembered;
