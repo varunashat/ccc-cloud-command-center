@@ -1,7 +1,7 @@
 // Browser agent executor. The Cloud Command Center page runs the loop (AI Foundry decides on the server);
 // this file only observes and acts on ONE tab, and only while that tab is on an allowed Azure sign-in/portal host.
 const AGENT_CCC = 'https://cloud-command-center.icyhill-ea3b0d83.uaenorth.azurecontainerapps.io';
-const AGENT_HOSTS = ['portal.azure.com', 'ms.portal.azure.com', 'login.microsoftonline.com', 'login.live.com', 'microsoftonline.com',
+const AGENT_HOSTS = ['portal.azure.com', 'portal.azure.net', 'ms.portal.azure.com', 'login.microsoftonline.com', 'login.live.com', 'microsoftonline.com',
   'msauth.net', 'msftauth.net', 'aadcdn.msftauth.net', 'azure.com'];
 const AGENT_HOME = 'https://portal.azure.com/';
 const hostOk = (u) => { try { const x = new URL(u); return x.protocol === 'https:' && AGENT_HOSTS.some((h) => x.hostname === h || x.hostname.endsWith('.' + h)); } catch (e) { return false; } };
@@ -89,7 +89,12 @@ async function agentOp(m, sender) {
   if (!tab) throw new Error('The agent tab was closed. Send your request again.');
   if (!hostOk(tab.url)) throw new Error('The agent tab left the Azure portal (' + (new URL(tab.url).hostname) + '). Stopped for safety.');
   if (m.op === 'observe') {
-    const frames = await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: observeInFrame, args: [80] });
+    let frames = [];
+    try { frames = await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: observeInFrame, args: [80] }); }
+    catch (e) {
+      // some frame blocked the call: fall back to the top frame so the agent still sees something
+      try { frames = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: observeInFrame, args: [80] }); } catch (e2) { throw new Error('Cannot read the portal tab: ' + e2.message); }
+    }
     const map = {}, elements = [];
     let g = 0, text = '';
     for (const f of frames) {
