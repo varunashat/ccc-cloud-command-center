@@ -1,0 +1,1107 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cloud Command Center</title>
+<style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0b1120;color:#e6edf9;font:15px Segoe UI,sans-serif}aside{position:fixed;inset:0 auto 0 0;width:230px;background:#111c30;padding:30px 22px;border-right:1px solid #263650}main{margin-left:230px;padding:38px;max-width:1550px}.brand{font-size:23px;font-weight:700}.muted,small{color:#9eafc8}h1{font-size:36px;margin:8px 0}h2{font-size:19px}.badge{display:inline-block;background:#163d38;color:#83e5bd;padding:6px 10px;border-radius:20px;font-size:12px}.hero{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}.panel,.card{background:#121e33;border:1px solid #293a55;border-radius:14px;padding:20px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:22px 0}.card{display:flex;flex-direction:column;gap:10px}.card p{color:#acbad0;min-height:44px;margin:0;line-height:1.5}.card h2{margin:0}button{background:#63d8c1;color:#081c20;border:0;border-radius:7px;padding:10px 14px;font-weight:650;cursor:pointer}button.secondary{background:#253750;color:#d8e5f7}button:disabled{opacity:.45;cursor:wait}select,input,textarea{background:#0b1425;color:#e6edf9;border:1px solid #3a4b66;border-radius:7px;padding:10px;max-width:100%}textarea{width:100%;height:90px}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:500px;overflow:auto;font:13px Consolas,monospace;color:#b7d1ed}a{color:#7ce8d1}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.section{margin-top:20px}table{width:100%;border-collapse:collapse;margin:10px 0}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid #263650;font-size:14px}th{color:#9eafc8;font-weight:600}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}.est-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}.tile{background:#0f1a2e;border:1px solid #263650;border-radius:10px;padding:12px}.tile b{display:block;font-size:20px;margin-top:4px}.tile.rec{border-color:#63d8c1}.pill{display:inline-block;border-radius:20px;padding:2px 9px;font-size:12px;background:#253750;color:#d8e5f7}.pill.ok{background:#163d38;color:#83e5bd}.pill.bad{background:#4a1d24;color:#ffb3bd}.chat{display:flex;flex-direction:column;gap:12px;height:520px;overflow-y:auto;padding:14px;background:#0b1425;border:1px solid #263650;border-radius:12px}.msg{max-width:88%;line-height:1.55;overflow-wrap:anywhere}.msg.u{align-self:flex-end;background:#1d3a5f;padding:10px 14px;border-radius:14px 14px 4px 14px}.msg.a{align-self:flex-start;background:#121e33;border:1px solid #293a55;padding:12px 16px;border-radius:14px 14px 14px 4px}.msg.a table{display:block;overflow-x:auto}.msg.a p{margin:6px 0}.msg.a ul{margin:6px 0;padding-left:20px}.msg.a h4{margin:10px 0 4px}.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}.chip{font-size:12px;background:#163d38;color:#83e5bd;border-radius:20px;padding:2px 9px}.chip.bad{background:#4a1d24;color:#ffb3bd}.composer{display:flex;gap:10px;align-items:flex-end;margin-top:10px}.composer textarea{flex:1;height:64px;resize:vertical}.att{font-size:13px;color:#9eafc8}.sugg{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.sugg button{background:#16273d;color:#cfe0f5;font-weight:500;border:1px solid #2b3f5c}.estcard{margin-top:10px;border-top:1px solid #293a55;padding-top:8px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}.drop{border:1px dashed #3a4b66;border-radius:10px;padding:16px;min-width:0}#est-results table,#est-intake table{display:block;overflow-x:auto;white-space:nowrap}#estimator{min-width:0;overflow-wrap:anywhere}@media(max-width:1000px){.est-grid,.tiles{grid-template-columns:1fr}}#status{background:#16273d;padding:12px;border-radius:8px;z-index:1}@media(max-width:1000px){aside{display:none}main{margin:0;padding:20px}.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.grid{grid-template-columns:1fr}.hero{display:block}}.panel table{display:block;max-width:100%;overflow-x:auto}#dc-tenant,#dc-month{max-width:100%}#discpanel label{max-width:100%;overflow-wrap:anywhere}#discpanel input,#discpanel li,#discpanel p{max-width:100%;overflow-wrap:anywhere}#discpanel input{min-width:0!important}.workspace-view[hidden],.hero[hidden]{display:none!important}.hosted-sidebar{overflow:auto}.workspace-nav{display:grid;gap:4px;margin-top:24px}.workspace-nav a{display:block;padding:10px 12px;border-radius:8px;text-decoration:none;color:inherit}.workspace-nav a:hover,.workspace-nav a[aria-current="page"]{background:rgba(128,140,170,.2)}.workspace-nav a[aria-current="page"]{font-weight:700}.workspace-view{padding-top:18px}.workspace-view h1{margin:0 0 16px}.workspace-view .grid{margin-top:16px}@media(max-width:1000px){aside.hosted-sidebar{display:block;position:static;width:auto;padding:16px 20px}.workspace-nav{display:flex;flex-wrap:wrap;margin-top:8px}}
+.proposal-form{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(250px,1fr);gap:18px;align-items:start}
+.proposal-form .panel{display:grid;gap:14px}
+.proposal-form h2,.proposal-form p,.proposal-files{margin:0}
+.proposal-form h2:not(:first-child){margin-top:8px;padding-top:16px;border-top:1px solid #293a55}
+.proposal-form label{display:grid;gap:6px;font-weight:600}
+.proposal-form input,.proposal-form select,.proposal-form textarea{min-width:0}
+.proposal-form .proposal-export label{display:flex;align-items:flex-start;line-height:1.45}
+.proposal-form .proposal-export input{margin-top:4px}
+.proposal-files{overflow-wrap:anywhere}
+@media(max-width:860px){.proposal-form{grid-template-columns:1fr}}
+</style>
+<aside><div class="brand">◈ Cloud<br>Command Center</div><p class="muted">LOCAL WORKSPACE / 01</p><hr><p>Overview</p><p>Customer operations</p><p>Azure intelligence</p><p>Reports & evidence</p><div class="section badge">Read-only cloud defaults</div><p class="muted">Separate Edge profile.<br>Sign in and complete MFA yourself.</p></aside>
+<main><div class="hero"><div><small>AZURE OPERATIONS WORKSPACE</small><h1>Your cloud, in focus.</h1><p class="muted">Inventory, review and automate from one local workspace.</p></div><span class="badge">Starter • Demo ready</span></div>
+<div id="status" role="status" aria-live="polite">Ready. Start with customer inventory.</div>
+<div class="panel section"><div class="row"><label>Data source <select id="mode"><option value="demo">Synthetic demo</option><option value="live">Live Azure (configure first)</option></select></label><label>Customer <select id="customer"><option value="unassigned">Unassigned</option></select></label><input id="name" aria-label="New customer name" placeholder="Customer name"><button id="add">Add customer</button></div><p class="muted">Customer labels organize run evidence; they do not switch your Azure subscription. Live reads always use config.json.</p></div>
+<div class="panel section" id="assistant"><div class="row" style="justify-content:space-between"><div><small>AI ASSISTANT · AZURE AI FOUNDRY</small><h2 style="margin:4px 0">TAM 360 Copilot</h2></div><div class="row"><span class="pill" id="ai-state">Not connected</span><button class="secondary" id="ai-connect">Sign in to AI Foundry</button></div></div>
+<p class="muted">Chat like you would with Claude. Ask for a BOQ, attach an RVTools / Azure Migrate / BOQ file, compare reserved vs pay-as-you-go, or run a read-only Azure check. Your Foundry model plans the work; the app's tools fetch official Azure prices and build the Excel BOQ. Sign-in opens a Microsoft login window on this PC.</p>
+<p><label><input type="checkbox" id="ai-consent"> Use my Azure AI Foundry model for this chat (billable; messages and tool results are sent to my Azure resource)</label></p>
+<div class="chat" id="chat" aria-live="polite"><div class="msg a"><p>Hi! I can price Azure workloads from a description or a file, build a proposal-ready BOQ, and check your Azure estate (read-only). What are we working on?</p></div></div>
+<div class="sugg" id="sugg"><button type="button">Price 10 Windows VMs 4 vCPU 16 GB with 3-year reserved in UAE North, AED</button><button type="button">Compare pay-as-you-go vs savings plan for 2 SQL DB General Purpose 8 vCore with AHUB</button><button type="button">Build a landing-zone BOQ: hub firewall, VPN, 2 TB backup, Log Analytics 5 GB/day</button><button type="button">Run the FinOps workflow in demo mode and summarise</button></div>
+<div class="composer"><label class="secondary" style="cursor:pointer;padding:10px 12px;border-radius:7px;background:#253750">📎<input type="file" id="chat-file" accept=".xlsx,.xlsm,.csv,.json" hidden></label><textarea id="chat-in" placeholder="Message TAM 360 Copilot…  (Enter to send, Shift+Enter for a new line)" aria-label="Message"></textarea><button id="chat-send">Send</button></div><div class="att" id="chat-att"></div></div>
+<div class="panel section" id="calcagent"><div class="row" style="justify-content:space-between"><div><small>AZURE CALCULATOR AGENT · YOUR FOUNDRY MODEL + REAL AZURE CALCULATOR</small><h2 style="margin:4px 0">Build it in the Azure Pricing Calculator</h2></div></div>
+<p class="muted">Describe the services. An Edge window opens the official Azure Pricing Calculator, and your Azure AI Foundry model adds and fills in every service (any calculator product) the way a person would. The app then saves the estimate and gives you the share link. Prices are the calculator's own. First time only: sign in to your Microsoft account in that Edge window and approve MFA. The sign-in is remembered.</p>
+<div class="row" style="margin:8px 0 12px"><b>Step 1 · one time:</b><span class="pill" id="ca-sign">Checking…</span><button class="secondary" id="ca-signin">Sign in to Azure Calculator</button><small class="muted" id="ca-signmsg"></small></div>
+<b>Step 2 · build:</b>
+<textarea id="ca-text" aria-label="Services for the calculator" placeholder="e.g. UAE North: Azure Firewall Standard, Azure DDoS Protection (Network), Application Gateway WAF v2 with 2 capacity units, 3 x D4s v5 Windows VMs, Azure SQL Database General Purpose 4 vCore"></textarea>
+<div class="row section"><input id="ca-name" placeholder="Estimate name (e.g. Contoso landing zone)" aria-label="Estimate name" style="min-width:280px"><label><input type="checkbox" id="ca-consent"> Let my Azure AI Foundry model operate the calculator (billable)</label><button id="ca-run">Build &amp; get share link</button></div>
+<div id="ca-results" role="status" aria-live="polite"></div></div>
+<div class="panel section" id="estimator"><div class="row" style="justify-content:space-between"><div><small>ADVANCED ESTIMATOR · OFFICIAL AZURE PRICES</small><h2 style="margin:4px 0">Azure BOQ &amp; pricing</h2></div><a href="/estimator/template.xlsx">Download BOQ template</a></div>
+<p class="muted">Upload a BOQ template, RVTools export or Azure Migrate assessment, or describe the requirement and let Azure AI Foundry draft the line items. Prices come only from the Microsoft Azure Retail Prices API (pay-as-you-go, 1-/3-year reserved, savings plan, Azure Hybrid Benefit). The AI never sets a price.</p>
+<div class="est-grid"><div class="drop"><h2 style="font-size:16px;margin-top:0">1 · Input file</h2><input type="file" id="est-file" accept=".xlsx,.xlsm,.csv,.json" aria-label="Estimate input file"><p class="muted" id="est-file-status">No file uploaded.</p></div>
+<div class="drop"><h2 style="font-size:16px;margin-top:0">…or describe it (Azure AI Foundry)</h2><textarea id="est-text" aria-label="Requirement text" placeholder="e.g. 12 Windows web servers 4 vCPU 16 GB, 2 SQL Server 8 vCore Business Critical, 5 TB blob, site-to-site VPN, backup for all VMs, UAE North"></textarea><p><label><input type="checkbox" id="est-ai-consent"> Send this text to my Azure AI Foundry model (billable).</label></p><button class="secondary" id="est-draft">Draft line items with AI</button></div></div>
+<div class="row section"><label>Currency <select id="est-currency"><option>USD</option><option selected>AED</option><option>SAR</option><option>EUR</option><option>GBP</option><option>INR</option></select></label>
+<label>Default region <select id="est-region"><option value="uaenorth">UAE North</option><option value="uaecentral">UAE Central</option><option value="qatarcentral">Qatar Central</option><option value="saudiarabiaeast">Saudi Arabia East</option><option value="westeurope">West Europe</option><option value="northeurope">North Europe</option><option value="centralindia">Central India</option><option value="eastus">East US</option></select></label>
+<label>Hours/month <input id="est-hours" type="number" min="1" max="744" value="730" style="width:90px"></label>
+<label>Disk tier <select id="est-disk"><option value="premium">Premium SSD</option><option value="standardssd">Standard SSD</option><option value="standard">Standard HDD</option></select></label>
+<label><input type="checkbox" id="est-ahub"> Azure Hybrid Benefit (Windows/SQL)</label><label><input type="checkbox" id="est-off"> Include powered-off VMs</label>
+<input id="est-project" placeholder="Project / proposal name" aria-label="Project name"></div>
+<p><label><input type="checkbox" id="est-narr"> Add an AI executive summary (Azure AI Foundry; sends totals and line names, billable)</label></p>
+<button id="est-run">Price estimate</button>
+<div id="est-intake" class="section" hidden></div>
+<div id="est-results" class="section" role="status" aria-live="polite"></div></div>
+<div class="panel section" id="partnerpanel"><div class="row" style="justify-content:space-between"><div><small>PARTNER CENTER · INCENTIVES › CUSTOMER CLAIMS</small><h2 style="margin:4px 0">Partner Center eligibility</h2></div><span class="pill" id="pc-state">Ready</span></div>
+<p class="muted">Enter the customer. The app opens Partner Center in its Edge window, fills <b>Add customer</b> (claim name, customer ID type, customer ID), clicks Next and reads which engagements are <b>Eligible</b> and <b>Ineligible</b>, then closes the form. It never ticks an engagement or submits, so <b>no claim is created</b>. First time only: sign in to Partner Center in that window yourself (MFA).</p>
+<div class="row"><input id="pc-customer" placeholder="Customer name (e.g. National Bonds)" aria-label="Customer name" style="min-width:240px">
+<label>Customer ID type <select id="pc-type"><option value="domain">Domain name</option><option value="tenant">Tenant ID</option><option value="tpid">TPID</option></select></label>
+<input id="pc-id" placeholder="nationalbonds.ae" aria-label="Customer ID" style="min-width:240px"></div>
+<div class="row section"><label style="flex:1">Claim name <input id="pc-claim" aria-label="Claim name" style="width:100%"></label><button id="pc-run">Check eligibility</button><button class="secondary" id="pc-open">Open Partner Center</button></div>
+<div id="pc-results" class="section" role="status" aria-live="polite"></div></div>
+<div class="panel section" id="discpanel"><div class="row" style="justify-content:space-between"><div><small>EXISTING CLIENT WORKLOAD → AZURE CALCULATOR LINK</small><h2 style="margin:4px 0">Get the Azure Calculator link for a client</h2></div><span class="pill" id="dc-state">Ready</span></div>
+<p class="muted">Three steps. Everything runs on this PC with plain Python scripts: <b>no AI and no tokens</b> (no Foundry, no Claude, no ChatGPT). The client's Azure is only read. Your Azure sign-in and the calculator sign-in are remembered.</p><p id="dc-acct" class="muted"></p>
+<div class="row"><b>1 · Sign in to Azure</b><button id="dc-tenants">Sign in to Azure</button><small class="muted">A Microsoft login opens in <b>Edge</b>. Use your work account and approve MFA there, then come back to this page.</small></div>
+<div class="row section"><b>2 · Choose the client</b><label>Client directory <select id="dc-tenant" aria-label="Client directory"></select></label><small class="muted">Subscriptions load automatically; untick any you don't want.</small></div>
+<div id="dc-sublist" class="section"></div>
+<div class="row section"><b>3 · Which workload?</b><label><input type="radio" name="dc-mode" id="dc-mode-cur" value="current" checked> Current (actual bill, last 30 days)</label><label><input type="radio" name="dc-mode" id="dc-mode-month" value="month"> A past month: <select id="dc-month" aria-label="Month" disabled></select></label><small class="muted">The calculator is built from what the client actually pays (Cost Management): every billed resource with today's exact specs, deleted ones from their meters, VMs with the hours they ran. Azure Arc / on-prem servers count only for their real Azure charges (Defender, Log Analytics, Arc SQL licences).</small></div>
+<div class="row section"><b>4 · Get the link</b><label>Cost lookback <select id="dc-days"><option>30</option><option>60</option><option selected>90</option></select> days</label><label>Disks for on-prem / Arc servers <select id="dc-disk"><option value="premium">Premium SSD</option><option value="standardssd">Standard SSD</option><option value="standard">Standard HDD</option></select></label><label><input type="checkbox" id="dc-off"> Include disconnected / expired servers and stopped VMs</label><label><input type="checkbox" id="dc-arcvm"> Migration estimate: also price Arc / on-prem servers as Azure VMs</label></div>
+<p><label><input type="checkbox" id="dc-consent"> I am authorised to read this client's Azure (read-only)</label></p>
+<div class="row"><button id="dc-go">Get Azure Calculator link for this client</button><button class="secondary" id="dc-run">Only collect inventory &amp; Excel (no calculator)</button></div>
+<small class="muted">First time only, an Edge window also opens the Azure Calculator: sign in there once (see "Sign in to Azure Calculator" below).</small>
+<p id="dc-msg" class="muted" role="alert"></p><div id="dc-results" class="section" role="status" aria-live="polite"></div></div>
+<div class="grid" id="cards"></div>
+<div class="panel section"><h2>Calculator downloads & share link</h2><p class="muted">Uses your Microsoft account in a separate automation session. Sample VM inputs must be reviewed. Sign-in can take up to 10 minutes. No need to press Enter in CMD.</p><div id="calculator-results" role="status" aria-live="polite">No calculator job yet.</div></div><div class="panel section"><h2>Azure AI Foundry advisory</h2><p class="muted">Optional paid model call. No browser actions or cloud changes are generated or executed.</p><textarea id="prompt" aria-label="Foundry prompt" placeholder="Ask for an Azure architecture review…"></textarea><p><label><input id="consent" type="checkbox"> Send only this prompt to my configured Azure model; usage may incur charges.</label></p><button id="ask">Ask Foundry</button></div>
+<div class="panel section"><div class="row"><h2>Run output & evidence</h2><button id="report">Export HTML report</button><button class="secondary" id="history">Show history</button><a id="download" hidden>Download report</a></div><pre id="output">No workflow selected.</pre></div>
+<script>
+const token='__TOKEN__'; const $=id=>document.getElementById(id);
+const workflows=[['calculator','Azure Pricing Calculator','Real calculator + manual MFA','Export reviewed VM rows and create a saved Azure Calculator link. Sign in and approve MFA in visible Edge. Runs against Azure even when other workflows use demo data.'],['finops','FinOps / cost optimization','Demo + live reads','Month-to-date cost and Advisor recommendations. No automatic rightsizing or purchases.'],['assessment','Azure assessment','Inventory hygiene','Find resources missing tags. Architecture assessment remains a manual review.'],['security','Security review','Partial signal','Identify explicit public network access flags in the collected inventory.'],['waf','WAF review','Policy inventory','List WAF policy modes; no traffic simulation or policy changes.'],['partner','Partner Center eligibility','Live check · read-only','Enter a customer domain: the app reads the Eligible / Ineligible engagements (incl. Migrate & Modernize, former AMMP) from Partner Center. No claim is created.'],['inventory','Customer inventory','Demo + live reads','Collect subscription resources, types, regions and available properties.'],['foundry','Azure AI Foundry','Configured integration','Open the model portal; use the advisory prompt below for an optional API call.']];
+for(const [id,title,status,desc] of workflows){let card=document.createElement('div');card.className='card';let label=document.createElement('small');label.textContent=status;let h=document.createElement('h2');h.textContent=title;let p=document.createElement('p');p.textContent=desc;let row=document.createElement('div');row.className='row';if(id==='partner'){let b=document.createElement('button');b.textContent='Check customer eligibility';b.onclick=()=>{$('partnerpanel').scrollIntoView({behavior:'smooth'});$('pc-id').focus()};row.append(b)}else if(id!=='foundry'&&id!=='calculator'){let b=document.createElement('button');b.textContent='Run workflow';b.onclick=()=>run(id);row.append(b)}if(id==='calculator'){let b=document.createElement('button');b.textContent='Export + share reviewed VMs';b.onclick=()=>{if(confirm('Have you reviewed legacy_calculator/example-workload.json? This runs those VM rows in the REAL Azure Calculator, exports files and SAVES/SHARES the estimate in your Microsoft account. Complete sign-in and phone MFA in visible Edge.'))run('calculator_vm',{reviewed:true})};row.append(b)}let open=document.createElement('button');open.className='secondary';open.textContent='Open in Edge';open.onclick=()=>call('/api/browser',{action:id});row.append(open);card.append(label,h,p,row);$('cards').append(card)}
+async function call(url,data){document.querySelectorAll('button').forEach(b=>b.disabled=true);$('status').textContent='Working… Complete sign-in in the browser if requested.';try{let r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-Local-Token':token},body:JSON.stringify(data)});let j=await r.json();$('output').textContent=JSON.stringify(j,null,2);if(!r.ok)throw Error(j.error);$('status').textContent=j.job?'Calculator started. Watch the visible Edge window for sign-in/MFA; results appear below.':'Completed • '+new Date().toLocaleTimeString();if(j.download){$('download').href=j.download;$('download').hidden=false}return j}catch(e){$('status').textContent=e.message}finally{document.querySelectorAll('button').forEach(b=>b.disabled=false)}}
+function run(action,extra={}){return call('/api/run',{action,mode:$('mode').value,customer_id:$('customer').value,...extra})}
+async function state(){return (await fetch('/api/state')).json()}
+async function customers(){const s=await state();const current=$('customer').value;$('customer').replaceChildren(new Option('Unassigned','unassigned'));s.customers.forEach(c=>$('customer').add(new Option(c.name,c.id)));$('customer').value=current}
+async function refreshCalculator(){try{const data=await state();const target=$('calculator-results');target.replaceChildren();const jobs=Object.entries(data.calculator_jobs||{});if(!jobs.length){target.textContent='No calculator job yet.';return}for(const [id,j] of jobs){const box=document.createElement('div');box.className='section';const message=document.createElement('p');message.textContent=id+' • '+j.message;box.append(message);if(j.calculator_url){const a=document.createElement('a');a.textContent='Open saved Azure Calculator estimate';a.href=j.calculator_url;a.target='_blank';a.rel='noopener noreferrer';box.append(a)}for(const [name,url] of Object.entries(j.downloads||{})){const p=document.createElement('p');const a=document.createElement('a');a.textContent='Download '+name;a.href=url;p.append(a);box.append(p)}target.append(box)}}catch(e){/* Server may be restarting; retry on next poll. */}}
+
+
+
+/* ---------- Azure Calculator agent ---------- */
+async function startCalcAgent(extra){if(!$('ca-consent').checked&&!(extra&&extra.consent)){$('status').textContent='Tick "Let my Azure AI Foundry model operate the calculator" first.';document.getElementById('calcagent').scrollIntoView({behavior:'smooth'});return}
+ const j=await run('calc_agent',{request:$('ca-text').value,name:$('ca-name').value,region:$('est-region').value,consent:true,...(extra||{})});if(j&&j.job){document.getElementById('calcagent').scrollIntoView({behavior:'smooth'});refreshCalcAgent()}}
+$('ca-run').onclick=()=>startCalcAgent();
+$('ca-signin').onclick=async()=>{const j=await run('calc_signin');if(j&&j.status){$('ca-signmsg').textContent=j.status}};
+function showSignin(s){const p=$('ca-sign');if(!s)return;const ok=s.status==='completed';p.textContent=ok?'Signed in (remembered)':s.status==='running'?'Waiting for your sign-in…':s.status==='failed'?'Not signed in':'Not signed in yet';p.className='pill '+(ok?'ok':s.status==='running'?'':'bad');$('ca-signin').textContent=ok?'Sign in again':'Sign in to Azure Calculator';if(s.message)$('ca-signmsg').textContent=s.message}
+async function refreshCalcAgent(){try{const data=await state();showSignin(data.calc_signin);if(data.elevated){$('ca-signmsg').textContent='⚠ Start.cmd is running as Administrator. Your company policy blocks Edge automation when elevated. Close Start.cmd and double-click it normally (not "Run as administrator").';$('ca-sign').className='pill bad'}const box=$('ca-results');box.replaceChildren();const jobs=Object.entries(data.calc_agent_jobs||{});if(!jobs.length)return;
+ jobs.slice(0,3).forEach(([id,j],n)=>{const w=el('div','','section');const h=el('div','','row');h.append(el('b',j.name||'Azure estimate'),el('span',j.status==='completed'?'Share link ready':j.status==='failed'?'Stopped':'Working','pill '+(j.status==='completed'?'ok':j.status==='failed'?'bad':'')),el('small',(j.created_utc||'').slice(0,16).replace('T',' ')+' UTC'));w.append(h);
+  w.append(el('p',j.message||'','muted'));
+  if(j.url){const r=el('div','','row');const inp=el('input');inp.value=j.url;inp.readOnly=true;inp.style.minWidth='320px';inp.setAttribute('aria-label','Share link');const cp=el('button','Copy link','secondary');cp.onclick=async()=>{try{await navigator.clipboard.writeText(j.url);cp.textContent='Copied'}catch(e){inp.select()}};const a=el('a','Open in Azure Calculator');a.href=j.url;a.target='_blank';a.rel='noopener';r.append(inp,cp,a);w.append(r)}
+  if(j.modules&&j.modules.length){const ul=el('ul');j.modules.forEach(m=>ul.append(el('li',m)));w.append(el('small','Services in the calculator estimate'+(j.total?' · total '+j.total+' / month':'')),ul)}
+  if(n===0&&j.log&&j.log.length){const det=el('details');det.append(el('summary','What the agent did ('+j.log.length+' steps)'));const ol=el('ol');j.log.slice(-15).forEach(s=>ol.append(el('li',(s.thought||'')+' → '+(s.results||[]).join('; '))));det.append(ol);if(j.status!=='running')det.open=false;w.append(det)}
+  box.append(w)})}catch(e){}}
+setInterval(refreshCalcAgent,3000);refreshCalcAgent();
+
+/* ---------- TAM 360 Copilot (Azure AI Foundry agent) ---------- */
+const chatHist=[];let chatFile=null,busy=false;
+function mdSafe(src){const esc=t=>t.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const inl=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`([^`]+)`/g,'<code>$1</code>');
+ const L=String(src||'').split('\n');let h='',i=0;while(i<L.length){let l=L[i];
+  if(/^\s*\|.*\|\s*$/.test(l)){const rows=[];while(i<L.length&&/^\s*\|.*\|\s*$/.test(L[i])){rows.push(L[i]);i++}const cells=r=>r.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim());const body=rows.filter(r=>!/^\s*\|[\s:|-]+\|\s*$/.test(r));h+='<table>'+body.map((r,n)=>'<tr>'+cells(r).map(c=>n?'<td>'+inl(c)+'</td>':'<th>'+inl(c)+'</th>').join('')+'</tr>').join('')+'</table>';continue}
+  if(/^\s*[-*•]\s+/.test(l)){h+='<ul>';while(i<L.length&&/^\s*[-*•]\s+/.test(L[i])){h+='<li>'+inl(L[i].replace(/^\s*[-*•]\s+/,''))+'</li>';i++}h+='</ul>';continue}
+  if(/^\s*\d+[.)]\s+/.test(l)){h+='<ol>';while(i<L.length&&/^\s*\d+[.)]\s+/.test(L[i])){h+='<li>'+inl(L[i].replace(/^\s*\d+[.)]\s+/,''))+'</li>';i++}h+='</ol>';continue}
+  const hd=l.match(/^#{1,4}\s+(.*)/);if(hd){h+='<h4>'+inl(hd[1])+'</h4>';i++;continue}
+  if(l.trim())h+='<p>'+inl(l)+'</p>';i++}return h}
+function bubble(role,content,extra){const m=document.createElement('div');m.className='msg '+(role==='user'?'u':'a');
+ if(extra&&extra.tools&&extra.tools.length){const c=el('div','','chips');extra.tools.forEach(t=>c.append(el('span',(t.ok?'✓ ':'✕ ')+t.tool.replace(/_/g,' '),'chip'+(t.ok?'':' bad'))));m.append(c)}
+ if(role==='user'){m.textContent=content}else{const d=document.createElement('div');d.innerHTML=mdSafe(content);m.append(d)}
+ if(extra&&extra.estimates)extra.estimates.forEach(e=>{const card=el('div','','estcard');if(e.summary){card.append(el('b','Recommended '+money(e.currency,e.summary.rec.monthly)+' / mo'))}
+  for(const [n,u] of Object.entries(e.downloads||{})){if(!n.startsWith('calculator-')){const a=el('a',n==='boq.xlsx'?'BOQ (Excel)':n==='boq.html'?'Summary (HTML)':'Data (JSON)');a.href=u;card.append(a)}}
+  (e.workloads||[]).forEach(w=>{const part=Number(w.replace(/\D/g,''));const b=el('button','Send VM rows '+part+' to Azure Calculator','secondary');b.onclick=()=>{if(confirm('Open the REAL Azure Pricing Calculator with these VM rows and save/share in your Microsoft account?'))run('estimate_to_calculator',{job:e.job,part,reviewed:true})};card.append(b)});m.append(card)});
+ $('chat').append(m);$('chat').scrollTop=$('chat').scrollHeight;return m}
+async function sendChat(text){text=(text||'').trim();if(!text&&!chatFile||busy)return;if(!$('ai-consent').checked){$('status').textContent='Tick "Use my Azure AI Foundry model" first.';return}
+ let content=text||'Please price the attached file.';if(chatFile){content+='\n\n[Attached file: '+chatFile.name+' · file_id '+chatFile.input+']';}
+ chatHist.push({role:'user',content});bubble('user',text+(chatFile?'\n📎 '+chatFile.name:''));chatFile=null;$('chat-att').textContent='';$('chat-in').value='';
+ busy=true;$('chat-send').disabled=true;const wait=bubble('assistant','_Thinking… _');
+ try{const r=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json','X-Local-Token':token},body:JSON.stringify({action:'chat',foundry_model:($('foundry-model')||{}).value,messages:chatHist.slice(-20),consent:true,customer_id:$('customer').value,currency:$('est-currency').value,region:$('est-region').value})});const j=await r.json();wait.remove();
+  if(!r.ok)throw Error(j.error);chatHist.push({role:'assistant',content:j.reply});bubble('assistant',j.reply,j);$('ai-state').textContent='Connected';$('ai-state').className='pill ok';refreshEstimator()}
+ catch(e){wait.remove();bubble('assistant','⚠️ '+e.message);chatHist.pop()}finally{busy=false;$('chat-send').disabled=false}}
+$('chat-send').onclick=()=>sendChat($('chat-in').value);
+$('chat-in').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat($('chat-in').value)}});
+$('sugg').addEventListener('click',e=>{const b=e.target.closest('button');if(b){$('chat-in').value=b.textContent;$('chat-in').focus()}});
+$('chat-file').onchange=async()=>{const f=$('chat-file').files[0];if(!f)return;$('chat-att').textContent='Uploading '+f.name+'…';try{const r=await fetch('/api/upload',{method:'POST',headers:{'X-Local-Token':token,'X-Filename':f.name},body:f});const j=await r.json();if(!r.ok)throw Error(j.error);chatFile={input:j.input,name:j.name};$('chat-att').textContent='📎 '+j.name+' attached. Add a message (optional) and press Send.'}catch(e){$('chat-att').textContent=e.message}$('chat-file').value=''};
+$('ai-connect').onclick=async()=>{$('ai-state').textContent='Signing in… check the Microsoft login window';const j=await run('foundry_connect');if(j&&j.status){$('ai-state').textContent='Connected';$('ai-state').className='pill ok';$('ai-consent').checked=true}else{$('ai-state').textContent='Not connected';$('ai-state').className='pill bad'}};
+
+/* ---------- Advanced estimator ---------- */
+let estInput=null;const lab={payg:'Pay-as-you-go',ri1:'1-year Reserved',ri3:'3-year Reserved',sp1:'1-year Savings Plan',sp3:'3-year Savings Plan',rec:'Recommended mix'};
+const el=(t,txt,cls)=>{const e=document.createElement(t);if(txt!=null)e.textContent=txt;if(cls)e.className=cls;return e};
+const money=(c,v)=>c+' '+Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+$('est-file').onchange=async()=>{const f=$('est-file').files[0];if(!f)return;$('est-file-status').textContent='Uploading '+f.name+'…';try{const r=await fetch('/api/upload',{method:'POST',headers:{'X-Local-Token':token,'X-Filename':f.name},body:f});const j=await r.json();if(!r.ok)throw Error(j.error);estInput=j.input;$('est-file-status').textContent='Ready: '+j.name+' ('+Math.round(j.bytes/1024)+' KB). Click Price estimate.';$('est-intake').hidden=true}catch(e){$('est-file-status').textContent=e.message}};
+function estOpts(){return {currency:$('est-currency').value,region:$('est-region').value,hours:Number($('est-hours').value),disk_tier:$('est-disk').value,ahub:$('est-ahub').checked,include_off:$('est-off').checked}}
+$('est-draft').onclick=async()=>{const j=await run('ai_intake',{text:$('est-text').value,consent:$('est-ai-consent').checked,...estOpts()});if(!j||!j.result)return;estInput=j.result.input;const box=$('est-intake');box.hidden=false;box.replaceChildren(el('h2','AI-drafted line items · review before pricing'));
+ const t=el('table');const h=el('tr');['Type','Name','Region','Qty','Details','AI notes'].forEach(x=>h.append(el('th',x)));t.append(h);
+ for(const it of j.result.items){const r=el('tr');const det=Object.entries(it).filter(([k,v])=>!['type','name','region','quantity','notes','source'].includes(k)&&v!==''&&v!=null&&v!==false).map(([k,v])=>k+': '+v).join(', ');[it.type,it.name,it.region,it.quantity,det,it.notes].forEach(x=>r.append(el('td',String(x??''))));t.append(r)}box.append(t);
+ if(j.result.questions.length){box.append(el('p','Open questions the AI could not answer:','muted'));const ul=el('ul');j.result.questions.forEach(q=>ul.append(el('li',q)));box.append(ul)}
+ box.append(el('p','These items are saved as the estimate input. Click Price estimate to price them, or fix the text and draft again.','muted'));$('est-file-status').textContent='Using AI-drafted items.'};
+$('est-run').onclick=async()=>{if(!estInput){$('status').textContent='Upload a file or draft items with AI first.';return}
+ const narr=$('est-narr').checked;if(narr&&!confirm('Send the estimate totals and line names to your Azure AI Foundry model for an executive summary?'))return;
+ await run('estimate',{input:estInput,project:$('est-project').value,narrative:narr,consent:narr,...estOpts()});refreshEstimator()};
+async function refreshEstimator(){try{const data=await state();const box=$('est-results');const jobs=Object.entries(data.estimator_jobs||{});box.replaceChildren();if(!jobs.length){box.append(el('p','No estimate yet.','muted'));return}
+ jobs.slice(0,4).forEach(([id,j],n)=>{const w=el('div','', 'section');const head=el('div','','row');head.append(el('b',(j.customer||'Customer')+(j.project?' · '+j.project:'')),el('span',j.status==='done'?'Ready':j.status==='failed'?'Failed':'Working','pill '+(j.status==='done'?'ok':j.status==='failed'?'bad':'')),el('small',(j.input||'')+' · '+(j.created_utc||'').slice(0,16).replace('T',' ')+' UTC'));w.append(head);
+  if(j.status!=='done'){w.append(el('p',j.message,'muted'));box.append(w);return}
+  const c=j.currency;const tiles=el('div','','tiles');['payg','rec','ri3'].forEach(k=>{const s=j.summary[k];const t=el('div','', 'tile'+(k==='rec'?' rec':''));t.append(el('small',lab[k]),el('b',money(c,s.monthly)+' / mo'),el('small',money(c,s.annual)+' / yr'+(k!=='payg'?' · saves '+s.saving_pct+'%':'')));tiles.append(t)});w.append(tiles);
+  if(n===0){const t=el('table');const h=el('tr');['Pricing model','Monthly','Annual','3-year','Saving'].forEach((x,i)=>h.append(el('th',x,i?'n':'')));t.append(h);for(const k of ['payg','ri1','ri3','sp1','sp3','rec']){const s=j.summary[k];const r=el('tr');[lab[k],money(c,s.monthly),money(c,s.annual),money(c,s.three_year),s.saving_pct+'%'].forEach((x,i)=>r.append(el('td',x,i?'n':'')));t.append(r)}w.append(t);
+   const t2=el('table');const h2=el('tr');['Largest lines','Configuration','Qty','PAYG / mo','Recommended','Rec. / mo'].forEach((x,i)=>h2.append(el('th',x,[2,3,5].includes(i)?'n':'')));t2.append(h2);for(const l of j.top){const r=el('tr');[l.name,l.config,l.qty,money(c,l.payg),lab[l.model],money(c,l.rec)].forEach((x,i)=>r.append(el('td',String(x),[2,3,5].includes(i)?'n':'')));t2.append(r)}w.append(t2);
+   if(j.funding&&j.funding.length){w.append(el('p','Funding to explore (advisory, verify in Partner Center): '+j.funding.map(f=>f.program).join(' · '),'muted'))}}
+  if(j.errors&&j.errors.length)w.append(el('p','Not priced: '+j.errors.join(' | '),'muted'));
+  if(j.narrative_error)w.append(el('p','AI summary: '+j.narrative_error,'muted'));
+  const links=el('div','','row');for(const [name,url] of Object.entries(j.downloads||{})){const a=el('a',(name==='boq.xlsx'?'Download BOQ (Excel)':name==='boq.html'?'Download summary (HTML)':name==='boq.json'?'Download data (JSON)':'VM rows '+name.replace(/\D/g,'')+' (JSON)'));a.href=url;links.append(a)}w.append(links);
+  if(j.status==='done'){const ab=el('button','Build this estimate in Azure Calculator with AI (all services, share link)');ab.onclick=()=>{if(confirm('Your Azure AI Foundry model will open the REAL Azure Pricing Calculator and add every service of this estimate, then save and share it. Continue?'))startCalcAgent({source_job:id,consent:true,name:(j.customer||'Customer')+(j.project?' · '+j.project:'')})};w.append(ab)}
+  (j.workloads||[]).forEach(wl=>{const part=Number(wl.replace(/\D/g,''));const b=el('button','VM rows only, part '+part+' (no AI)','secondary');b.onclick=()=>{if(confirm('Open the REAL Azure Pricing Calculator with the VM rows of this estimate, then save and share it in your Microsoft account? Review the VM rows first.'))run('estimate_to_calculator',{job:id,part,reviewed:true})};w.append(b)});
+  box.append(w)})}catch(e){/* server restarting */}}
+
+const fy=()=>{const d=new Date();return 'FY'+String((d.getFullYear()+(d.getMonth()>=6?1:0))%100).padStart(2,'0')};
+const pcName=()=>{const c=$('pc-customer').value.trim();if(c)return c;const v=$('pc-id').value.trim().toLowerCase().split('@').pop();return $('pc-type').value==='domain'&&v?v.split('.')[0].replace(/-/g,' ').replace(/\b\w/g,m=>m.toUpperCase()):''};
+let pcTouched=false;$('pc-claim').oninput=()=>{pcTouched=true};
+function pcSuggest(){if(pcTouched)return;const n=pcName();$('pc-claim').value=n?n+' – Azure – '+fy():''}
+['pc-customer','pc-id','pc-type'].forEach(i=>$(i).addEventListener('input',pcSuggest));
+$('pc-type').onchange=()=>{$('pc-id').placeholder={domain:'nationalbonds.ae',tenant:'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',tpid:'8223726'}[$('pc-type').value];pcSuggest()};
+$('pc-run').onclick=async()=>{pcSuggest();const j=await run('partner_check',{customer:$('pc-customer').value,customer_id:$('pc-id').value,id_type:$('pc-type').value,claim_name:$('pc-claim').value});if(j&&j.status)$('status').textContent=j.status;refreshPartner()};
+$('pc-open').onclick=()=>call('/api/browser',{action:'partner'});
+async function refreshPartner(){try{const data=await state();const jobs=data.partner_jobs||[];const box=$('pc-results');box.replaceChildren();const st=$('pc-state');
+ if(!jobs.length){st.textContent='Ready';st.className='pill';return}
+ const run0=jobs.find(j=>j.status==='running');st.textContent=run0?'Checking…':'Ready';st.className='pill'+(run0?'':' ok');
+ jobs.slice(0,4).forEach((j,n)=>{const w=el('div','','section');const head=el('div','','row');
+  const ok=j.status==='done'&&j.result&&j.result.customer_eligible;
+  head.append(el('b',(j.customer||j.customer_id)+' · '+j.customer_id),el('span',j.status==='running'?'Checking':j.status==='failed'?'Failed':ok?'ELIGIBLE':'NOT ELIGIBLE','pill '+(j.status==='running'?'':ok?'ok':'bad')),el('small',(j.created_utc||'').slice(0,16).replace('T',' ')+' UTC'));w.append(head);
+  if(j.status!=='done'){w.append(el('p',j.message||'','muted'));box.append(w);return}
+  const r=j.result;w.append(el('p','Claim name: '+r.claim_name+' · '+r.eligible_count+' eligible, '+r.ineligible_count+' ineligible engagement(s).','muted'));
+  const am=el('p','');am.append(el('span',r.ammp_available?'Migration funding (former AMMP): AVAILABLE':'Migration funding (former AMMP): not in the eligible list','pill '+(r.ammp_available?'ok':'bad')));if(r.ammp_available)am.append(document.createTextNode(' '+r.ammp_engagements.join(' · ')));w.append(am);
+  if(n===0){for(const [g,items] of Object.entries(r.eligible_groups||{})){w.append(el('h4',g));const ul=el('ul');items.forEach(x=>ul.append(el('li',x)));w.append(ul)}
+   if(r.ineligible.length){const det=el('details');det.append(el('summary','Ineligible ('+r.ineligible.length+')'));const ul=el('ul');r.ineligible.forEach(x=>ul.append(el('li',x.name+(x.note?' — '+x.note:''))));det.append(ul);w.append(det)}
+   const cp=el('button','Copy eligible list','secondary');cp.onclick=()=>navigator.clipboard.writeText(r.customer+' ('+r.customer_id+') – eligible engagements:\n'+r.eligible.map(x=>'• '+x).join('\n'));w.append(cp)}
+  box.append(w)})}catch(e){/* server restarting */}}
+setInterval(refreshPartner,3000);refreshPartner();
+setInterval(refreshEstimator,3000);refreshEstimator();
+setInterval(refreshCalculator,2500);refreshCalculator();
+/* ---------- Customer discovery (multi-tenant, read-only) ---------- */
+const dcErr=m=>{$('dc-msg').textContent=m||''};
+async function dcRun(a,x){dcErr('Working… a Microsoft sign-in window may open on this PC; complete MFA there.');try{const r=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json','X-Local-Token':token},body:JSON.stringify({action:a,customer_id:$('customer').value,...x})});const j=await r.json();if(!r.ok){dcErr('⚠ '+j.error);return null}dcErr('');return j}catch(e){dcErr('⚠ '+e.message);return null}}
+$('dc-tenants').onclick=async()=>{const j=await dcRun('disc_tenants');if(!j||!j.tenants)return;const sel=$('dc-tenant');sel.replaceChildren();j.tenants.forEach(t=>sel.add(new Option(t.name+' · '+t.id,t.id)));if(!j.tenants.length)$('status').textContent='No directories returned. Check the account.';$('dc-sublist').replaceChildren();if(j.tenants.length)dcLoadSubs()};
+async function dcLoadSubs(){if(!$('dc-tenant').value){$('status').textContent='List directories first.';return}const j=await dcRun('disc_subscriptions',{tenant:$('dc-tenant').value});if(!j||!j.subscriptions)return;const box=$('dc-sublist');box.replaceChildren();
+ if(!j.subscriptions.length){box.append(el('p','No subscriptions visible in this directory.','muted'));return}
+ j.subscriptions.forEach(s=>{const l=el('label','','');l.style.display='block';const c=document.createElement('input');c.type='checkbox';c.value=s.id;c.checked=s.state==='Enabled';c.className='dc-sub';l.append(c,document.createTextNode(' '+s.name+' · '+s.id+' · '+s.state));box.append(l)})}
+$('dc-tenant').onchange=()=>{$('dc-results').replaceChildren();dcErr('');dcLoadSubs();refreshDiscovery()};
+document.querySelectorAll('input[name=dc-mode]').forEach(r=>r.onchange=()=>{$('dc-month').disabled=!$('dc-mode-month').checked});
+const dcMonth=()=>$('dc-mode-month').checked?$('dc-month').value:null;
+const dcClient=()=>{const o=$('dc-tenant').selectedOptions[0];return o?o.text.split(' · ')[0]:'Customer'};
+const dcSubs=()=>[...document.querySelectorAll('.dc-sub:checked')].map(c=>c.value);
+async function dcStart(calc){const subs=dcSubs();if(!$('dc-tenant').value){dcErr('⚠ Step 1: click "Sign in to Azure" first.');return}if(!subs.length){dcErr('⚠ Step 2: select at least one subscription.');return}
+ const j=await dcRun('disc_run',{tenant:$('dc-tenant').value,subscriptions:subs,days:Number($('dc-days').value),consent:$('dc-consent').checked,calculator:calc,calculator_consent:$('dc-consent').checked,month:dcMonth(),customer_name:dcClient(),arc_as_vm:$('dc-arcvm').checked,region:$('est-region').value,include_off:$('dc-off').checked,disk_tier:$('dc-disk').value});if(j&&j.job){dcErr('Collecting the client\'s resources…');refreshDiscovery()}}
+$('dc-run').onclick=()=>dcStart(false);$('dc-go').onclick=()=>dcStart(true);
+async function refreshDiscovery(){try{const data=await state();const ac=data.azure_account||{};const box0=$('dc-acct');if(ac.signed_in&&ac.server){box0.textContent='Reading client directories as '+(ac.user||'you')+' (read-only).';if(!window.__dcAuto&&!$('dc-tenant').options.length){window.__dcAuto=1;$('dc-tenants').click()}}else if(ac.signed_in){box0.replaceChildren(document.createTextNode('Signed in to Azure as '+(ac.user||'your account')+' (remembered). '));const so=el('button','Sign out','secondary');so.onclick=async()=>{await dcRun('disc_signout');$('dc-tenant').replaceChildren();$('dc-sublist').replaceChildren();refreshDiscovery()};box0.append(so);if(!window.__dcAuto&&!$('dc-tenant').options.length){window.__dcAuto=1;$('dc-tenants').click()}}else box0.textContent='Not signed in to Azure yet.';const ms=$('dc-month');if(!ms.options.length&&data.months){data.months.forEach(m=>ms.add(new Option(m.label,m.value)));if(ms.options.length>1)ms.selectedIndex=1}
+ const tsel=$('dc-tenant').value;const jobs=Object.entries(data.discovery_jobs||{}).filter(([i,j])=>!tsel||String(j.tenant||'').toLowerCase()===tsel.toLowerCase());const box=$('dc-results');box.replaceChildren();const st=$('dc-state');const r0=jobs.find(([i,j])=>j.status==='running');st.textContent=r0?'Collecting…':'Ready';st.className='pill'+(r0?'':' ok');
+ jobs.slice(0,3).forEach(([id,j],n)=>{const w=el('div','','section');const h=el('div','','row');h.append(el('b',(j.customer||'Customer')+' · '+(j.period||'Current')+' · '+(j.subscriptions||0)+' subscription(s)'),el('span',j.status==='done'?'Ready':j.status==='failed'?'Failed':'Working','pill '+(j.status==='done'?'ok':j.status==='failed'?'bad':'')),el('small',(j.created_utc||'').slice(0,16).replace('T',' ')+' UTC'));w.append(h);
+  w.append(el('p',j.message||'','muted'));
+  const cj=j.calc_job&&(data.calc_agent_jobs||{})[j.calc_job];if(cj&&cj.status==='waiting_browser'&&SRV){w.append(browserPlanBox(j.calc_job,cj))}if(cj){const cb=el('div','','row');cb.append(el('span',cj.status==='completed'?'Calculator link ready':cj.status==='failed'?'Calculator stopped':'Calculator working','pill '+(cj.status==='completed'?'ok':cj.status==='failed'?'bad':'')),el('small',cj.message||''));w.append(cb);
+   if(cj.problems&&cj.problems.length){const ul=el('ul');cj.problems.forEach(p=>ul.append(el('li',p)));w.append(el('small','Check these lines in the calculator'),ul)}if(cj.notes&&cj.notes.length)w.append(el('p','Not in the calculator (add manually or see BOQ): '+cj.notes.join(' | '),'muted'));if(cj.total)w.append(el('p','Calculator total: '+cj.total,'muted'));if(cj.url){const inp=el('input');inp.value=cj.url;inp.readOnly=true;inp.style.minWidth='360px';inp.setAttribute('aria-label','Azure Calculator share link');const cp=el('button','Copy link','secondary');cp.onclick=async()=>{try{await navigator.clipboard.writeText(cj.url);cp.textContent='Copied'}catch(e){inp.select()}};const a=el('a','Open in Azure Calculator');a.href=cj.url;a.target='_blank';a.rel='noopener';const r2=el('div','','row');r2.append(inp,cp,a);w.append(r2)}}
+  if(j.status!=='done'){box.append(w);return}
+  w.append(el('p',(j.resources||0)+' resources · '+(j.cost_rows||0)+' cost rows · '+(j.advisor||0)+' Advisor recommendations · '+(j.priceable||0)+' priceable line items','muted'));
+  if(j.failures&&j.failures.length){const ul=el('ul');j.failures.forEach(f=>ul.append(el('li',f)));w.append(el('small','Permission / API warnings'),ul)}
+  if(n===0&&j.summary&&j.summary.length){const t=el('table');const hr=el('tr');['Subscription','Resource type','Count'].forEach((x,i)=>hr.append(el('th',x,i===2?'n':'')));t.append(hr);j.summary.slice(0,15).forEach(s=>{const r=el('tr');[s.subscriptionId,s.type,s.count].forEach((x,i)=>r.append(el('td',String(x),i===2?'n':'')));t.append(r)});const sc=el('div','','scroll');sc.style.overflowX='auto';sc.append(t);w.append(sc)}
+  if(j.coverage){const cv=el('div','','row');Object.entries(j.coverage).forEach(([k,v])=>cv.append(el('span',k+': '+v,'pill '+(k.startsWith('NOT')?'bad':k.startsWith('In calculator - exact')?'ok':''))));w.append(el('small','Coverage of every discovered resource (full list in the Excel sheet "Coverage A-Z")'),cv)}
+  if(j.month_summary){const s=j.month_summary;const cj2=j.calc_job&&(data.calc_agent_jobs||{})[j.calc_job];const t=el('table');[['Actual Azure bill, '+s.label+(s.month?'':' (Cost Management)'),(s.currency||'')+' '+Number(s.actual_total).toLocaleString(undefined,{maximumFractionDigits:2})],['Azure Calculator total (list price, pay-as-you-go)',cj2&&cj2.total?cj2.total:'(after the calculator run)'],...(cj2&&cj2.total&&isFinite(parseFloat(String(cj2.total).replace(/[^\d.]/g,'')))?[(()=>{const c=parseFloat(String(cj2.total).replace(/[^\d.]/g,'')),b=Number(s.actual_total),d=c-b;return ['Difference (calculator − bill)',(d>=0?'+':'−')+Math.abs(d).toLocaleString(undefined,{maximumFractionDigits:2})+(b?' ('+(d>=0?'+':'−')+Math.abs(100*d/b).toFixed(1)+'%)':'')]})()]:[]),['Resources on that bill',String(s.billed_resources)],['Services of the bill present in the calculator',(s.in_calculator_pct!=null?s.in_calculator_pct+'%':'-')],['Share of the bill itemised in the calculator',s.itemised_pct==null?'n/a':s.itemised_pct+'%']].forEach(([k,v])=>{const r=el('tr');r.append(el('td',k),el('td',v,'n'));t.append(r)});w.append(el('small','Actual bill vs calculator (the bill includes your discounts, credits and reservations; the calculator shows list prices)'),t);
+   if(s.not_itemised&&s.not_itemised.length)w.append(el('p','On the bill but not in the calculator (add manually; cost in bill currency): '+s.not_itemised.map(x=>x.type+' '+x.cost.toFixed(2)).join(' | '),'muted'));if(s.default_settings&&s.default_settings.length)w.append(el('p','In the calculator with default settings (the service is there; set its quantity, amount is what the bill shows): '+s.default_settings.map(x=>x.type+' '+x.cost.toFixed(2)).join(' | '),'muted'));if(s.no_calculator_equivalent&&s.no_calculator_equivalent.length)w.append(el('p','On the bill, but the Azure Pricing Calculator has no service for it (shown for completeness): '+s.no_calculator_equivalent.map(x=>x.type+' '+x.cost.toFixed(2)).join(' | '),'muted'));}
+  if(j.disk_warning)w.append(el('p','⚠ '+j.disk_warning,'muted'));
+  if(j.also_present&&j.also_present.length)w.append(el('p','Also present, added to the calculator with default usage assumptions: '+j.also_present.join(' | '),'muted'));
+  if(j.not_priced&&j.not_priced.length)w.append(el('p','Not priced from inventory: '+j.not_priced.join(' | '),'muted'));
+  const row=el('div','','row');for(const [name,url] of Object.entries(j.downloads||{})){const a=el('a','Download assessment workbook (Excel)');a.href=url;row.append(a)}
+  if(j.priceable){const b=el('button','Price this estate with official Azure prices');b.onclick=async()=>{const r=await dcRun('disc_estimate',{job:id,arc_as_vm:$('dc-arcvm').checked,...estOpts(),disk_tier:$('dc-disk').value,include_off:$('dc-off').checked});if(r&&r.job){$('status').textContent='Pricing '+r.items+' discovered line items…';document.getElementById('estimator').scrollIntoView({behavior:'smooth'});refreshEstimator()}};row.append(b);
+   const c=el('button','Build exact Azure Calculator link from this estate (no AI)');c.onclick=async()=>{const r=await dcRun('disc_calculator',{job:id,arc_as_vm:$('dc-arcvm').checked,region:$('est-region').value,include_off:$('dc-off').checked,disk_tier:$('dc-disk').value,name:(j.customer||'Customer')+' existing estate'});if(r&&r.job){dcErr('Filling the Azure Calculator (no AI). Keep the Edge window open; sign in there once if asked.');refreshDiscovery()}};row.append(c)}
+  w.append(row);box.append(w)})}catch(e){}}
+setInterval(refreshDiscovery,3000);refreshDiscovery();
+
+/* ---------- Hosted (cloud) mode ---------- */
+const SRV=window.CCC_SERVER||null;
+if(SRV){['assistant','calcagent','partnerpanel'].forEach(id=>{const e=document.getElementById(id);if(e)e.hidden=true});
+ document.querySelectorAll('.panel h2').forEach(h=>{if(/Calculator downloads/.test(h.textContent))h.closest('.panel').hidden=true});
+ const b1=$('dc-tenants');if(b1){b1.textContent='Load my directories'}
+ const tip=b1&&b1.nextElementSibling;if(tip&&tip.tagName==='SMALL')tip.textContent='You are signed in to this app with your Microsoft account; that sign-in is used to read client directories (read-only).';
+ const nav=document.createElement('div');nav.className='row';nav.style.cssText='position:fixed;top:10px;right:16px;z-index:9';const who=el('small','Signed in: '+SRV.user,'muted');const lo=el('button','Sign out','secondary');lo.onclick=async()=>{await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json','X-Local-Token':token},body:JSON.stringify({action:'logout'})});location.href='/'};nav.append(who,lo);document.body.append(nav)}
+function browserPlanBox(id,cj){const w=el('div','','section');
+ w.append(el('b','Fill the Azure Calculator in your browser (no AI)'));
+ const ext=document.documentElement.dataset.cccExtension==='1';w.append(el('p',ext?'Calculator auto-fill extension found: just click "Copy calculator data". The calculator opens, fills itself, saves, shares and the link + total come back here.':'Tip: install the Calculator auto-fill extension (CCC-Edge-Extension.zip) and "Copy calculator data" does everything automatically. Without it use the steps below.',ext?'ok':'muted'));
+ const ol=el('ol');
+ const li1=el('li','');const bm=document.createElement('a');bm.textContent='CCC fill';bm.href=SRV.bookmarklet;bm.className='pill ok';bm.title='Drag this to your favourites bar (one time only)';bm.onclick=e=>{e.preventDefault();alert('Drag "CCC fill" to your favourites / bookmarks bar (one time). Then use it on the Azure Calculator page.')};li1.append('One time only: drag ',bm,' to your favourites bar.');ol.append(li1);
+ const li2=el('li','');const cp=el('button','Copy calculator data','secondary');cp.onclick=async()=>{try{await navigator.clipboard.writeText(cj.plan);cp.textContent='Copied ('+cj.lines+' services)'}catch(e){const t=document.createElement('textarea');t.value=cj.plan;document.body.append(t);t.select();document.execCommand('copy');t.remove();cp.textContent='Copied'}};li2.append(cp);ol.append(li2);
+ const li3=el('li','');const op=document.createElement('a');op.href='https://azure.microsoft.com/en-us/pricing/calculator/';op.target='_blank';op.rel='noopener';op.textContent='Open the Azure Calculator';li3.append(op,' (sign in there if you want to save), click "CCC fill", paste (Ctrl+V), OK. After the reload click "CCC fill" once more.');ol.append(li3);
+ const li4=el('li','');li4.append('In the calculator click Share, copy the link and save it here: ');const inp=el('input');inp.placeholder='https://azure.com/e/...';inp.style.minWidth='260px';const sv=el('button','Save link');sv.onclick=async()=>{const r=await dcRun('calc_link_save',{job:id,url:inp.value.trim(),total:inp.dataset.total||''});if(r){dcErr('Share link saved.');refreshDiscovery()}};li4.append(inp,sv);ol.append(li4);
+ w.append(ol);return w}
+
+$('add').onclick=async()=>{await run('customer',{name:$('name').value});await customers()};$('report').onclick=()=>run('report');$('ask').onclick=()=>run('foundry',{prompt:$('prompt').value,consent:$('consent').checked});$('history').onclick=async()=>{$('output').textContent=JSON.stringify(await state(),null,2)};customers();
+
+if (window.CCC_SERVER && !document.getElementById('work-home')) {
+  const areas = [
+    ['home', 'Home'],
+    ['assessment', 'Azure Assessment'],
+    ['pricing', 'Pricing Calculator & BOQ'],
+    ['foundry', 'AI Foundry'],
+    ['dms', 'DMS Search'],
+    ['proposal', 'Noventiq Proposal Studio'],
+    ['jobs', 'Jobs & CIO Review'],
+    ['settings', 'Connections & Settings']
+  ];
+  const sidebar = document.querySelector('aside');
+  sidebar.classList.add('hosted-sidebar');
+  const brand = el('div', 'Noventiq Cloud Command Center', 'brand');
+  const nav = el('nav', '', 'workspace-nav');
+  nav.setAttribute('aria-label', 'Work areas');
+  sidebar.replaceChildren(brand, nav);
+  const views = new Map();
+  const links = new Map();
+  for (const [id, title] of areas) {
+    const link = el('a', title);
+    link.href = '#work-' + id;
+    nav.append(link);
+    links.set(id, link);
+    const section = el('section', '', 'workspace-view');
+    section.id = 'work-' + id;
+    section.append(el('h1', title));
+    document.querySelector('main').append(section);
+    views.set(id, section);
+  }
+  document.querySelector('.hero').hidden = true;
+  const move = (area, id) => views.get(area).append($(id));
+  move('assessment', 'discpanel');
+  move('assessment', 'cards');
+  move('pricing', 'estimator');
+  move('pricing', 'calcagent');
+  views.get('pricing').append($('calculator-results').parentElement);
+  move('foundry', 'assistant');
+  views.get('foundry').append($('prompt').parentElement);
+  views.get('jobs').append($('output').parentElement);
+  const home = views.get('home');
+  const metrics = el('div', '', 'grid');
+  for (const [label, value, destination] of [
+    ['Running jobs', 'Background worker pending', 'jobs'],
+    ['Completed proposals', 'Proposal generation pending', 'proposal'],
+    ['Pending user decisions', 'Decision tracking pending', 'jobs'],
+    ['CIO review', 'Review workflow pending', 'jobs'],
+    ['Recent outputs', 'Open run history', 'jobs'],
+    ['AI usage and cost', 'Usage metrics pending', 'foundry']
+  ]) {
+    const card = el('div', '', 'card');
+    const link = el('a', value);
+    link.href = '#work-' + destination;
+    card.append(el('h2', label), link);
+    metrics.append(card);
+  }
+  home.append(metrics);
+  const panel = (area, title, copy) => {
+    const box = el('div', '', 'panel section');
+    box.append(el('h2', title), el('p', copy, 'muted'));
+    views.get(area).append(box);
+  };
+
+
+  panel('jobs', 'Background jobs and CIO review', 'Durable execution and review are pending. Existing workflow evidence is available above.');
+  panel('settings', 'Microsoft account', 'Signed in as ' + window.CCC_SERVER.user);
+  panel('settings', 'Azure AI Foundry', 'Use the AI Foundry area for the existing advisory workflow.');
+  panel('settings', 'Customer context', 'The customer selector labels workflow evidence. Select the Azure directory and subscriptions separately in Azure Assessment.');
+  const show = () => {
+    const requested = location.hash.replace(/^#work-/, '');
+    const active = views.has(requested) ? requested : 'home';
+    for (const [id, view] of views) {
+      view.hidden = id !== active;
+      if (id === active) links.get(id).setAttribute('aria-current', 'page');
+      else links.get(id).removeAttribute('aria-current');
+    }
+  };
+  window.addEventListener('hashchange', show);
+  show();
+  const estimator = $('estimator');
+  const scrollToEstimator = estimator.scrollIntoView.bind(estimator);
+  estimator.scrollIntoView = options => {
+    location.hash = '#work-pricing';
+    show();
+    scrollToEstimator(options);
+  };
+}
+
+
+if (window.CCC_SERVER && $('work-settings') && $('work-foundry')) {
+  const consolePanel = $('assistant');
+  consolePanel.hidden = false;
+  consolePanel.querySelector('h2').textContent = 'AI Console';
+  $('prompt').closest('.panel').hidden = true;
+  const model = el('select');
+  model.id = 'foundry-model';
+  for (const [value, name] of [['gpt-6.1-sol', 'GPT-6.1 Sol (default)'], ['gpt-6-astra', 'GPT-6 Astra']]) {
+    model.add(new Option(name, value));
+  }
+  const label = el('label', 'Model ');
+  label.append(model);
+  consolePanel.querySelector('.row').append(label);
+  const connection = Array.from($('work-settings').querySelectorAll('.panel')).find(panel =>
+    panel.querySelector('h2')?.textContent === 'Azure AI Foundry');
+  const settings = connection || el('div', '', 'panel section');
+  if (!connection) $('work-settings').append(settings);
+  const stateLabel = $('ai-state');
+  stateLabel.textContent = 'Configured';
+  const test = $('ai-connect');
+  test.textContent = 'Test connection';
+  settings.replaceChildren(el('h2', 'Azure AI Foundry'),
+    el('p', 'The app uses its Azure managed identity. The connection test sends a short model request.', 'muted'),
+    stateLabel, ' ', test);
+  test.onclick = async () => {
+    stateLabel.textContent = 'Testing…';
+    const result = await run('foundry_connect', {foundry_model: model.value});
+    stateLabel.textContent = result ? 'Connected' : 'Test failed';
+    stateLabel.className = 'pill ' + (result ? 'ok' : 'bad');
+  };
+}
+
+if (window.CCC_SERVER && document.getElementById('work-dms')) {
+  const origin = 'http://127.0.0.1:8766';
+  const keyName = 'ccc-local-dms:' + window.CCC_SERVER.user;
+  const area = document.getElementById('work-dms');
+  const panel = el('div', '', 'panel section');
+  const pair = el('form', '', 'row');
+  const pairLink = el('a', 'Get pairing code');
+  pairLink.href = origin + '/pair';
+  pairLink.target = '_blank';
+  pairLink.rel = 'noopener noreferrer';
+  const pairKey = el('input');
+  pairKey.type = 'password';
+  pairKey.required = true;
+  pairKey.autocomplete = 'off';
+  pairKey.placeholder = 'Pairing code';
+  pairKey.setAttribute('aria-label', 'Pairing code');
+  const connect = el('button', 'Connect');
+  pair.append(pairLink, pairKey, connect);
+
+  const status = el('p', 'Pair this browser with the helper on your laptop.', 'muted');
+  status.setAttribute('role', 'status');
+  const form = el('form', '', 'row');
+  const query = el('input');
+  query.placeholder = 'Al Futtaim ECEF PO';
+  query.setAttribute('aria-label', 'Search your synced files');
+  query.required = true;
+  query.maxLength = 300;
+  const submit = el('button', 'Search');
+  const forget = el('button', 'Forget pairing', 'secondary');
+  forget.type = 'button';
+  form.append(query, submit, forget);
+  form.style.display = 'none';
+
+  const results = el('div');
+  panel.append(el('h2', 'Search synced Noventiq files'),
+    el('p', 'Search runs on this laptop. Include the customer folder name to search downloaded document text.', 'muted'),
+    pair, form, status, results);
+  area.append(panel);
+
+  const requestLocal = async (path, key, body, timeout = 8000) => {
+    let response;
+    try {
+      response = await fetch(origin + path, {
+        method: 'POST', credentials: 'omit', cache: 'no-store',
+        targetAddressSpace: 'loopback',
+        headers: {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'},
+        body: JSON.stringify(body), signal: AbortSignal.timeout(timeout)
+      });
+    } catch (error) {
+      throw new Error(error.name === 'TimeoutError' ? 'Local DMS took too long. Try a specific customer folder.' :
+        'Local DMS is unavailable. Check that the helper is running and allow local network access if your browser prompts.');
+    }
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Local DMS request failed.');
+    return data;
+  };
+  const verifyPair = async key => {
+    await requestLocal('/status', key, {});
+    localStorage.setItem(keyName, key);
+    pair.style.display = 'none';
+    form.style.display = '';
+    pairKey.value = '';
+    status.textContent = 'Local DMS connected.';
+  };
+  pair.addEventListener('submit', async event => {
+    event.preventDefault();
+    connect.disabled = true;
+    try { await verifyPair(pairKey.value.trim()); }
+    catch (error) { status.textContent = error.message; }
+    finally { connect.disabled = false; }
+  });
+  forget.onclick = () => {
+    localStorage.removeItem(keyName);
+    results.replaceChildren();
+    pair.style.display = '';
+    form.style.display = 'none';
+    status.textContent = 'Pair this browser with the helper on your laptop.';
+  };
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const key = localStorage.getItem(keyName);
+    if (!key || !query.value.trim()) return;
+    submit.disabled = true;
+    forget.disabled = true;
+    status.textContent = 'Searching local files…';
+    results.replaceChildren();
+    try {
+      const data = await requestLocal('/search', key, {query: query.value}, 120000);
+      const list = el('ul');
+      for (const file of data.results) {
+        const item = el('li');
+        item.append(el('span', file.path + ' '));
+        const open = el('button', 'Open file', 'secondary');
+        open.onclick = async () => {
+          open.disabled = true;
+          status.textContent = file.available ? 'Opening the file…' : 'Opening through OneDrive…';
+          try {
+            await requestLocal('/open', key, {path: file.path}, 30000);
+            status.textContent = 'Sent to Windows to open. OneDrive may take a moment to download online-only files.';
+          } catch (error) {
+            status.textContent = error.message;
+          } finally {
+            open.disabled = false;
+          }
+        };
+        item.append(open);
+        if (!file.available) item.append(el('small', ' Online only'));
+        list.append(item);
+      }
+      results.append(list);
+      status.textContent = (data.results.length ? data.results.length + ' matching files.' : 'No matching files.') +
+        (data.online_only ? ' ' + data.online_only + ' online-only files were checked by name. Use OneDrive to download relevant files for content search.' : '') +
+        (data.limited ? ' Search was limited. Try a more specific customer or query.' : '') +
+        (data.content_search ? '' : ' Include the customer folder name to search document text.');
+    } catch (error) { status.textContent = error.message; }
+    finally { submit.disabled = false; forget.disabled = false; }
+  });
+  let checked = false;
+  const refresh = () => {
+    if (location.hash !== '#work-dms' || checked) return;
+    checked = true;
+    const key = localStorage.getItem(keyName);
+    if (key) verifyPair(key).catch(error => { status.textContent = error.message; });
+  };
+  window.addEventListener('hashchange', refresh);
+  refresh();
+}
+
+if (window.CCC_SERVER && document.getElementById('work-proposal')) {
+  const view = document.getElementById('work-proposal');
+  const routes = [
+    {id: 'rfp', title: 'RFP and attachments', upload: 'Choose RFP, BOQ, images and supporting documents'},
+    {id: 'email', title: 'Email, BOQ and supporting documents', upload: 'Choose BOQ and supporting documents'},
+    {id: 'gdc', title: 'GDC proposal conversion', upload: 'Choose supporting documents (optional)'}
+  ];
+  const formats = '.pdf,.docx,.xlsx,.xlsm,.csv,.txt,.png,.jpg,.jpeg,.webp';
+  const primaryFormats = '.pdf,.docx,.txt,.png,.jpg,.jpeg,.webp';
+  const picker = el('select');
+  const field = (caption, node) => {
+    const label = el('label', caption);
+    label.append(node);
+    return label;
+  };
+  const pickerPanel = el('section', '', 'panel section');
+  pickerPanel.append(field('Proposal source', picker));
+  view.append(pickerPanel);
+  const encode = (file, role) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read ' + file.name));
+    reader.onload = () => resolve({name: file.name, role, data: String(reader.result).split(',', 2)[1]});
+    reader.readAsDataURL(file);
+  });
+  const panels = new Map();
+
+  for (const route of routes) {
+    picker.add(new Option(route.title, route.id));
+    const container = el('div', '', 'section');
+    container.hidden = route.id !== 'rfp';
+    panels.set(route.id, container);
+    const form = el('form', '', 'proposal-form');
+    const inputs = el('section', '', 'panel');
+    const exportPanel = el('section', '', 'panel proposal-export');
+    const project = el('input');
+    project.required = true;
+    project.maxLength = 140;
+    project.placeholder = 'e.g. Azure Landing Zone and Migration';
+    const client = el('input');
+    client.required = true;
+    client.maxLength = 140;
+    const selectedCustomer = document.getElementById('customer')?.selectedOptions[0];
+    if (selectedCustomer?.value !== 'unassigned') client.value = selectedCustomer?.textContent || '';
+    const solution = el('select');
+    for (const option of [route.id === 'rfp' ? 'Infer from RFP' : 'Infer from sources', 'Azure', 'Modern Workplace',
+      'Microsoft licensing', 'Security', 'Data and AI', 'Hybrid']) {
+      solution.add(new Option(option));
+    }
+    const timeline = el('input');
+    timeline.placeholder = 'Optional if stated in the attachments';
+    timeline.maxLength = 240;
+    const notes = el('textarea');
+    notes.maxLength = 5000;
+    notes.placeholder = 'Add known objectives, quantities, constraints or dates.';
+    inputs.append(el('h2', 'Project details'), field('Project name', project), field('Customer name', client),
+      field('Solution area', solution), field('Target timeline', timeline), field('Project brief', notes),
+      el('h2', route.title));
+
+    const email = el('textarea');
+    email.maxLength = 20000;
+    email.rows = 7;
+    email.placeholder = 'Paste the customer email or relevant thread here.';
+    if (route.id === 'email') {
+      inputs.append(field('Customer email (optional if attaching documents)', email));
+    }
+    const primary = el('input');
+    primary.type = 'file';
+    primary.required = route.id === 'gdc';
+    primary.accept = primaryFormats;
+    if (route.id === 'gdc') inputs.append(field('Choose the GDC proposal (PDF, DOCX, TXT or image)', primary));
+    const attachments = el('input');
+    attachments.type = 'file';
+    attachments.multiple = true;
+    attachments.required = route.id === 'rfp';
+    attachments.accept = formats;
+    const files = el('ul', '', 'proposal-files');
+    const refreshFiles = () => {
+      files.replaceChildren(...[...primary.files, ...attachments.files].map(file => el('li', file.name)));
+    };
+    primary.onchange = refreshFiles;
+    attachments.onchange = refreshFiles;
+    inputs.append(field(route.upload, attachments),
+      el('p', 'Up to 8 files and 12 MB total. For scanned PDFs, attach the relevant pages as images.', 'muted'), files);
+
+    const control = el('input');
+    control.type = 'checkbox';
+    const controlLabel = el('label');
+    controlLabel.append(control, ' Fill the document control table');
+    const consent = el('input');
+    consent.type = 'checkbox';
+    consent.required = true;
+    const consentLabel = el('label');
+    consentLabel.append(consent, ' Send these inputs to the configured Azure Foundry model.');
+    const submit = el('button', route.id === 'gdc' ? 'Convert to Word proposal' : 'Generate Word proposal');
+    submit.type = 'submit';
+    const output = el('p', '', 'muted');
+    output.setAttribute('role', 'status');
+    const reviewPanel = el('div');
+    const chat = el('div');
+    const transcript = el('div');
+    transcript.setAttribute('role', 'log');
+    transcript.setAttribute('aria-label', 'Discovery chat transcript');
+    transcript.style.cssText = 'max-height:340px;overflow:auto;display:grid;gap:8px;margin:12px 0';
+    let reviewJob = null;
+    function addTurn(speaker, message) {
+      const turn = el('div');
+      turn.style.cssText = 'padding:10px 12px;background:rgba(104,150,205,.13);border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere';
+      turn.append(el('strong', speaker), el('div', message));
+      transcript.append(turn);
+      transcript.scrollTop = transcript.scrollHeight;
+    }
+    chat.setAttribute('aria-live', 'polite');
+    const reply = el('textarea');
+    reply.placeholder = 'Ask Foundry a question, share requirements, or answer follow-ups';
+    reply.setAttribute('aria-label', 'Reply to proposal discovery');
+    reply.maxLength = 2500;
+    reply.hidden = false;
+    const reviewButton = el('button', 'Start Foundry chat');
+    reviewButton.type = 'button';
+    const approve = el('input');
+    approve.type = 'checkbox';
+    const approveLabel = el('label');
+    approveLabel.append(approve, ' I reviewed the scope, architecture and open assumptions');
+    approveLabel.hidden = true;
+    const picture = el('input');
+    picture.type = 'file';
+    picture.accept = 'image/png';
+    const pictureLabel = el('label', 'Use your own architecture infographic (optional PNG, up to 1 MB)');
+    pictureLabel.append(picture);
+    let review = null;
+    let replies = [];
+    let canvas = null;
+    let pictureUrl = null;
+    submit.disabled = true;
+    reviewPanel.append(transcript, chat, reply, reviewButton, pictureLabel, approveLabel);
+
+    function showReview() {
+      if (pictureUrl) URL.revokeObjectURL(pictureUrl);
+      pictureUrl = null;
+      chat.replaceChildren(el('h3', 'Scope and architecture review'), el('p', review.summary));
+      const addList = (title, items) => {
+        if (!items.length) return;
+        const list = el('ul');
+        items.forEach(item => list.append(el('li', item)));
+        chat.append(el('h4', title), list);
+      };
+      addList('Questions to resolve', review.questions);
+      addList('Assumptions and open items', review.assumptions);
+      canvas = null;
+      if (picture.files.length) {
+        const preview = el('img');
+        pictureUrl = URL.createObjectURL(picture.files[0]);
+        preview.src = pictureUrl;
+        preview.alt = 'Uploaded architecture infographic';
+        preview.style.cssText = 'display:block;max-width:100%;margin:12px 0';
+        chat.append(preview);
+      } else if (review.flows.length) {
+        canvas = document.createElement('canvas');
+        canvas.width = 1200;
+        canvas.height = 105 + 137 * review.flows.length;
+        canvas.style.cssText = 'display:block;width:100%;height:auto;margin:12px 0;border-radius:10px';
+        canvas.setAttribute('role', 'img');
+        canvas.setAttribute('aria-label', review.flows.map(flow => flow.label + ': ' + flow.steps.join(' to ')).join('. '));
+        const context = canvas.getContext('2d');
+        context.fillStyle = '#edf4fc';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.fillStyle = '#102846';
+        context.font = 'bold 36px sans-serif';
+        context.fillText('Architecture and implementation', 34, 55);
+        review.flows.forEach((flow, row) => {
+          const y = 105 + row * 137;
+          const gap = 44;
+          const width = (1132 - gap * (flow.steps.length - 1)) / flow.steps.length;
+          context.fillStyle = '#28486e';
+          context.font = 'bold 22px sans-serif';
+          context.fillText(flow.label || 'Traffic flow', 34, y, 1132);
+          flow.steps.forEach((step, col) => {
+            const x = 34 + col * (width + gap);
+            context.fillStyle = '#0b5190';
+            context.fillRect(x, y + 18, width, 70);
+            context.fillStyle = 'white';
+            context.font = 'bold 24px sans-serif';
+            context.fillText(step, x + 12, y + 61, width - 24);
+            if (col < flow.steps.length - 1) {
+              context.fillStyle = '#087989';
+              context.font = 'bold 30px sans-serif';
+              context.fillText('→', x + width + 6, y + 61);
+            }
+          });
+        });
+        chat.append(canvas);
+      }
+    }
+
+    approve.onchange = () => { submit.disabled = !review?.ready || !approve.checked; };
+    picture.onchange = () => {
+      if (review) showReview();
+      approve.checked = false;
+      submit.disabled = true;
+    };
+    inputs.addEventListener('input', () => {
+      if (!review && !reviewButton.disabled) return;
+      review = null;
+      replies = [];
+      reviewJob = null;
+      transcript.replaceChildren();
+      canvas = null;
+      if (pictureUrl) URL.revokeObjectURL(pictureUrl);
+      pictureUrl = null;
+      chat.replaceChildren();
+      reply.value = '';
+      reply.hidden = false;
+      approve.checked = false;
+      approveLabel.hidden = true;
+      submit.disabled = true;
+      reviewButton.textContent = 'Start Foundry chat';
+    });
+    reply.oninput = () => {
+      approve.checked = false;
+      submit.disabled = true;
+    };
+    exportPanel.append(el('h2', 'Seven Seas proposal'),
+      el('p', 'Editable Word draft using the corporate SOW template. Review missing inputs and commitments before sending.', 'muted'),
+      controlLabel, consentLabel, reviewPanel, submit, output);
+    form.append(inputs, exportPanel);
+    container.append(form);
+    view.append(container);
+
+    reviewButton.onclick = () => runProposal(true);
+    form.onsubmit = event => {
+      event.preventDefault();
+      if (review?.ready && approve.checked && !reply.value.trim()) runProposal(false);
+      else output.textContent = 'Send any pending reply and confirm the reviewed design before generating.';
+    };
+    async function runProposal(discovery) {
+      if (!form.reportValidity()) return;
+      if (discovery && review && !reply.value.trim()) {
+        output.textContent = 'Enter a reply to continue the discovery conversation.';
+        return;
+      }
+      if (discovery && replies.length >= 12) {
+        output.textContent = 'This discovery conversation has reached 12 replies. Review and approve the current scope.';
+        return;
+      }
+      const nextReplies = discovery && reply.value.trim() ? [...replies, reply.value.trim()] : replies;
+      const priorReview = review ? JSON.stringify(review) : '';
+      const imageFile = picture.files[0];
+      if (!discovery && imageFile && (imageFile.size > 1000000 || !imageFile.name.toLowerCase().endsWith('.png'))) {
+        output.textContent = 'Choose a PNG infographic of up to 1 MB.';
+        return;
+      }
+      const selected = [...primary.files, ...attachments.files];
+      const emailText = email.value.trim();
+      if (route.id === 'email' && !emailText && !selected.length) {
+        output.textContent = 'Paste the email or attach a BOQ or supporting document.';
+        return;
+      }
+      if (selected.length > 8 || selected.reduce((bytes, file) => bytes + file.size, 0) > 12000000) {
+        output.textContent = 'Select up to 8 attachments totaling 12 MB.';
+        return;
+      }
+      const projectName = project.value.trim();
+      submit.disabled = true;
+      reviewButton.disabled = true;
+      const disabled = [...inputs.querySelectorAll('input, select, textarea'), picture, reply, approve, consent, picker].filter(field => !field.disabled);
+      for (const field of disabled) field.disabled = true;
+      output.textContent = 'Reading sources and preparing the Word draft.';
+      try {
+        let completedJob = null;
+        let response = await fetch('/api/proposal-studio', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-Local-Token': token, 'X-Proposal-Async': '1'},
+          body: JSON.stringify({
+            mode: discovery ? 'review' : 'draft', clarification: nextReplies, review: priorReview, review_job: reviewJob, review_approved: !discovery && approve.checked,
+            architecture_png: discovery ? '' : imageFile ? (await encode(imageFile, 'attachment')).data :
+              canvas ? canvas.toDataURL('image/png').split(',')[1] : '',
+            route: route.id, project: projectName, customer: client.value, solution: solution.value,
+            timeline: timeline.value, notes: notes.value, email: emailText, control: control.checked,
+            consent: consent.checked, files: await Promise.all(selected.map((file, index) =>
+              encode(file, route.id === 'gdc' && index === 0 ? 'gdc' : 'attachment')))
+          })
+        });
+          if (response.status === 202) {
+            const {job} = await response.json();
+            completedJob = job;
+            if (!job) throw new Error('Proposal Studio did not return a job ID.');
+            output.textContent = discovery ? 'Reviewing your sources. Large attachments can take several minutes.' : 'Preparing the Word draft. Large attachments can take several minutes.';
+            let transientErrors = 0;
+            do {
+              await new Promise(resolve => setTimeout(resolve, 3500));
+              try {
+                response = await fetch('/api/proposal-studio', {
+                  method: 'POST', headers: {'X-Local-Token': token, 'X-Proposal-Job': job}
+                });
+                if ([502, 503, 504].includes(response.status) &&
+                    !response.headers.get('Content-Type')?.includes('application/json')) {
+                  throw new Error('The gateway could not reach Proposal Studio.');
+                }
+                transientErrors = 0;
+              } catch (error) {
+                if (++transientErrors >= 4) throw error;
+                continue;
+              }
+              if (response.status !== 202) break;
+            } while (true);
+          }
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.error || 'Proposal generation failed. Try again.');
+        }
+        if (discovery) {
+          review = await response.json();
+          reviewJob = completedJob;
+          if (nextReplies.length > replies.length) addTurn('You', nextReplies.at(-1));
+          addTurn('AI Foundry', [review.answer || review.summary, ...review.questions, ...review.assumptions].filter(Boolean).join('\n\n'));
+          replies = nextReplies;
+          approve.checked = false;
+          reply.value = '';
+          reply.hidden = false;
+          approveLabel.hidden = !review.ready;
+          reviewButton.textContent = 'Send to Foundry';
+          showReview();
+          output.textContent = review.ready
+            ? 'Discovery is complete. Confirm the reviewed scope to generate the proposal.'
+            : 'Reply to resolve the open items. Word generation unlocks after confirmation.';
+          return;
+        }
+        const url = URL.createObjectURL(await response.blob());
+        const download = el('a', 'Download Word proposal');
+        download.href = url;
+        download.download = projectName.replace(/[<>:"/\\|?*]/g, '_') + ' - Seven Seas Proposal.docx';
+        output.replaceChildren('Draft ready. ', download);
+        download.addEventListener('click', () => setTimeout(() => URL.revokeObjectURL(url), 120000), {once: true});
+      } catch (error) {
+        output.textContent = error.message;
+      } finally {
+        for (const field of disabled) field.disabled = false;
+        reviewButton.disabled = false;
+        submit.disabled = !review?.ready || !approve.checked;
+      }
+    };
+  }
+  picker.onchange = () => {
+    for (const [id, panel] of panels) panel.hidden = id !== picker.value;
+  };
+}
+
+</script></main></html><script>(function(){function add(){if(document.getElementById('ccc-tam-link'))return;
+var a=document.createElement('a');a.id='ccc-tam-link';a.href='/tam';a.textContent='TAM Dashboard';
+var menu=[...document.querySelectorAll('nav,aside,[role=navigation]')].find(function(n){return n.querySelectorAll('a,button').length>2});
+if(menu){var ref=[...menu.querySelectorAll('a,button')].pop();a.className=ref.className||'';a.style.cssText=ref.getAttribute('style')||'';
+ a.style.display='block';ref.parentElement.appendChild(a);}
+else{a.style.cssText='position:fixed;top:10px;right:120px;z-index:9999;background:#2dd4bf;color:#0f172a;padding:7px 12px;border-radius:8px;font-weight:600;text-decoration:none';document.body.appendChild(a);}}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add);else add();setTimeout(add,1500);})();</script>
+
+<div id="ccc-ai"><button id="ccc-ai-btn" title="Ask Cloud Center: answers from all internal data (TAM, discovery, bills, calculator), then Azure AI Foundry">✦ Ask Cloud Center</button>
+<section id="ccc-ai-box" hidden><header><b>Ask Cloud Center</b><small>All internal data first · Azure AI Foundry</small><button id="ccc-ai-x" aria-label="Close">✕</button></header>
+<div id="ccc-ai-log" aria-live="polite"><p class="ccc-ai-hint">Ask about your customers, EA spend, AMMP claims, services forecast, a discovery / bill / calculator result, or any Azure question.</p></div>
+<form id="ccc-ai-f"><textarea id="ccc-ai-q" rows="2" placeholder="e.g. Top 5 EA customers by October spend" maxlength="2000"></textarea><button>Send</button></form></section></div>
+<script id="ccc-cg-nav">(function(){function add(){var n=document.querySelector('nav.workspace-nav');if(!n||n.querySelector('a[href="/cost-growth"]'))return;
+var a=document.createElement('a');a.href='/cost-growth';a.textContent='Cost Growth (Seven Seas)';a.title='Monthly cost growth of every Seven Seas customer: spikes, RI / Savings plan / Marketplace, Excel';
+var t=[].slice.call(n.querySelectorAll('a')).filter(function(x){return /TAM/.test(x.textContent)})[0];if(t&&t.parentNode)t.parentNode.insertBefore(a,t.nextSibling);else n.appendChild(a)}
+add();setTimeout(add,800);setTimeout(add,2500);}());</script><button id="ccc-ct-btn" title="Read-only test: can Cloud Command Center read Seven Seas (8372436B) costs with your Azure sign-in? Reads Zand Bank October 2026.">$ Cost access test</button>
+<div id="ccc-ct-box" hidden><b>Cost access test</b><button id="ccc-ct-x" aria-label="Close">✕</button><div id="ccc-ct-out">Testing…</div></div>
+<style>#ccc-ct-btn{position:fixed;right:16px;bottom:58px;z-index:99998;background:#334155;color:#fff;border:0;border-radius:16px;padding:6px 12px;font:12px Segoe UI,system-ui,sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+#ccc-ct-box{position:fixed;right:16px;bottom:96px;z-index:99999;width:min(440px,92vw);background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:10px;padding:12px 14px;font:13px Segoe UI,system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.45)}
+#ccc-ct-box b{display:inline-block;margin-bottom:8px}#ccc-ct-x{float:right;background:none;border:0;color:#94a3b8;cursor:pointer}
+#ccc-ct-out .ok{color:#4ade80;font-weight:600}#ccc-ct-out .no{color:#f87171;font-weight:600}#ccc-ct-out li{margin:4px 0;color:#cbd5e1;font-size:12px}</style>
+<script>(function(){var b=document.getElementById('ccc-ct-btn'),x=document.getElementById('ccc-ct-box'),o=document.getElementById('ccc-ct-out');
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+document.getElementById('ccc-ct-x').onclick=function(){x.hidden=true};
+b.onclick=async function(){x.hidden=false;o.textContent='Asking Azure for Zand Bank October 2026 cost with your sign-in…';
+try{var r=await fetch('/ai/cost-test',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',credentials:'same-origin'});var j=await r.json();
+if(r.status!=200){o.innerHTML='<span class="no">'+esc(j.error||('HTTP '+r.status))+'</span>';return}
+var h='<div class="'+(j.ok?'ok':'no')+'">'+(j.ok?'✔ Works':'✖ Does not work')+'</div><p>'+esc(j.message)+'</p>';
+if(j.ok)h+='<p>Signed in as '+esc(j.signed_in_as)+' · scope: '+esc(j.scope)+'</p>';
+if(j.tries&&j.tries.length){h+='<ul>';j.tries.forEach(function(t){h+='<li>'+esc((t.scope||'')+' · '+t.directory+' → '+t.result)+'</li>'});h+='</ul>'}
+o.innerHTML=h}catch(e){o.innerHTML='<span class="no">Could not reach the app.</span>'}}}());</script>
+<style>#ccc-ai{position:fixed;right:16px;bottom:16px;z-index:99999;font:14px Segoe UI,system-ui,sans-serif}
+#ccc-ai-btn{background:#0f766e;color:#fff;border:0;border-radius:18px;padding:6px 12px;font:600 12px Segoe UI,system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25);opacity:.92}#ccc-ai-btn:hover{opacity:1;background:#115e59}
+#ccc-ai-box{position:absolute;right:0;bottom:40px;width:min(440px,92vw);height:min(600px,75vh);background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.45)}
+#ccc-ai-box[hidden]{display:none}#ccc-ai-box header{display:flex;gap:8px;align-items:baseline;padding:10px 12px;border-bottom:1px solid #1e293b}
+#ccc-ai-box header small{color:#94a3b8;flex:1}#ccc-ai-x{background:none;border:0;color:#94a3b8;cursor:pointer;font-size:16px}
+#ccc-ai-log{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.ccc-ai-m{padding:8px 10px;border-radius:10px;max-width:92%;line-height:1.45;overflow-x:auto}.ccc-ai-m.u{align-self:flex-end;background:#1e3a5f}
+.ccc-ai-m.a{align-self:flex-start;background:#111c33;border:1px solid #1e293b}.ccc-ai-m p{margin:0 0 6px}.ccc-ai-m table{border-collapse:collapse;font-size:12.5px;margin:4px 0}
+.ccc-ai-m td,.ccc-ai-m th{border:1px solid #334155;padding:3px 6px;text-align:left}.ccc-ai-m code{background:#0b1224;padding:1px 4px;border-radius:4px}
+.ccc-ai-src{font-size:11.5px;color:#94a3b8;margin-top:4px}.ccc-ai-hint{color:#94a3b8;margin:0}
+#ccc-ai-f{display:flex;gap:6px;padding:10px;border-top:1px solid #1e293b}#ccc-ai-q{flex:1;resize:none;background:#0b1224;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:7px;font:inherit}
+#ccc-ai-f button{background:#2dd4bf;color:#04211d;border:0;border-radius:8px;padding:0 14px;font-weight:600;cursor:pointer}</style>
+<script>(function(){if(window.__cccAi)return;window.__cccAi=1;
+var box=document.getElementById('ccc-ai-box'),log=document.getElementById('ccc-ai-log'),q=document.getElementById('ccc-ai-q'),hist=[];
+try{hist=JSON.parse(sessionStorage.getItem('cccAiHist')||'[]')}catch(e){}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function inl(s){return esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`([^`]+)`/g,'<code>$1</code>')}
+function md(t){var L=String(t).split('\n'),o=[],i=0;while(i<L.length){var l=L[i];
+ if(/^\s*\|.*\|\s*$/.test(l)){var rows=[];while(i<L.length&&/^\s*\|.*\|\s*$/.test(L[i])){if(!/^\s*\|[\s:|-]+\|\s*$/.test(L[i]))rows.push(L[i].trim().slice(1,-1).split('|'));i++}
+  o.push('<table>'+rows.map(function(r,j){return'<tr>'+r.map(function(c){return(j?'<td>':'<th>')+inl(c.trim())+(j?'</td>':'</th>')}).join('')+'</tr>'}).join('')+'</table>');continue}
+ var m=l.match(/^\s*(?:[-*•]|\d+\.)\s+(.*)$/);if(m){var it=[];while(i<L.length&&(m=L[i].match(/^\s*(?:[-*•]|\d+\.)\s+(.*)$/))){it.push('<li>'+inl(m[1])+'</li>');i++}o.push('<ul>'+it.join('')+'</ul>');continue}
+ m=l.match(/^\s*#{1,4}\s+(.*)$/);if(m)o.push('<p><b>'+inl(m[1])+'</b></p>');else if(l.trim())o.push('<p>'+inl(l)+'</p>');i++}return o.join('')}
+function add(role,text,src){var d=document.createElement('div');d.className='ccc-ai-m '+(role==='user'?'u':'a');
+ if(role==='user')d.textContent=text;else{d.innerHTML=md(text);if(src){var s=document.createElement('div');s.className='ccc-ai-src';s.textContent=src;d.appendChild(s)}}
+ log.appendChild(d);log.scrollTop=log.scrollHeight;return d}
+hist.forEach(function(m){add(m.role,m.content)});
+function page(){try{var f=document.getElementById('tamframe');if(f)return f.contentWindow.location.pathname.replace('/tam/','')}catch(e){}return location.pathname.replace(/^\//,'')||'cloud-command-center'}
+document.getElementById('ccc-ai-btn').onclick=function(){box.hidden=!box.hidden;if(!box.hidden)q.focus()};
+document.getElementById('ccc-ai-x').onclick=function(){box.hidden=true};
+q.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();document.getElementById('ccc-ai-f').requestSubmit()}});
+document.getElementById('ccc-ai-f').onsubmit=async function(e){e.preventDefault();var text=q.value.trim();if(!text)return;q.value='';add('user',text);
+ var w=add('assistant','Thinking…');try{var r=await fetch('/ai/ask',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',
+ body:JSON.stringify({question:text,history:hist.slice(-8),page:page()})});var j=await r.json().catch(function(){return{}});w.remove();
+ if(!r.ok){add('assistant','⚠ '+(j.error||('HTTP '+r.status)));return}
+ add('assistant',j.answer,'Sources: '+((j.sources&&j.sources.length)?j.sources.join(', '):'general knowledge')+' · '+j.model);
+ hist.push({role:'user',content:text},{role:'assistant',content:j.answer});hist=hist.slice(-12);try{sessionStorage.setItem('cccAiHist',JSON.stringify(hist))}catch(e){}}
+ catch(ex){w.remove();add('assistant','⚠ Could not reach the app. Try again.')}};})();</script><!--ccc-theme-->
+<style id="ccc-theme-css">
+:root{--bg:#060a14;--bg2:#0a1020;--s1:#0d1527;--s2:#111b31;--s3:#16223c;--line:#1c2945;--line2:#26365a;--tx:#e7eef9;--mu:#8b9bb9;--mu2:#5f6f8e;
+--cy:#22d3ee;--te:#2dd4bf;--bl:#3b82f6;--vi:#8b5cf6;--am:#f5a524;--rd:#f43f5e;--gr:#22c55e;--sbw:252px;--tb:60px;
+--glow:0 0 0 1px rgba(34,211,238,.18),0 10px 30px -12px rgba(34,211,238,.35)}
+html,body{background:var(--bg)!important;color:var(--tx)!important;font-family:"Segoe UI Variable Text","Segoe UI",Inter,system-ui,sans-serif!important;-webkit-font-smoothing:antialiased}
+body{background:radial-gradient(1200px 600px at 85% -10%,rgba(59,130,246,.13),transparent 60%),radial-gradient(900px 500px at 10% 110%,rgba(45,212,191,.08),transparent 60%),var(--bg)!important;background-attachment:fixed!important}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(148,163,184,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.035) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(180deg,#000,transparent 85%)}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#1f2c49;border-radius:8px;border:2px solid var(--bg)}::-webkit-scrollbar-track{background:transparent}
+/* sidebar */
+aside.hosted-sidebar{box-sizing:border-box!important;width:var(--sbw)!important;padding:18px 14px!important;background:linear-gradient(180deg,rgba(13,21,39,.96),rgba(8,13,26,.98))!important;border-right:1px solid var(--line)!important;backdrop-filter:blur(12px);z-index:30!important;display:flex;flex-direction:column;overflow-y:auto}
+aside.hosted-sidebar .brand{display:flex!important;align-items:center;gap:11px;margin:2px 6px 20px!important;padding:0!important;font-size:0!important}
+.ccc-logo{width:38px;height:38px;border-radius:11px;flex:none;display:grid;place-items:center;background:conic-gradient(from 210deg,var(--cy),var(--bl),var(--vi),var(--te),var(--cy));box-shadow:0 6px 20px -6px rgba(34,211,238,.6)}
+.ccc-logo svg{width:20px;height:20px}
+.ccc-bt b{display:block;font-size:15px;font-weight:700;letter-spacing:.2px;color:#fff;line-height:1.15}.ccc-bt small{display:block;font-size:9.5px;color:var(--mu);letter-spacing:.9px;white-space:nowrap;text-transform:uppercase;margin-top:3px}
+nav.workspace-nav{display:flex!important;flex-direction:column;gap:2px!important}
+.ccc-grp{font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:var(--mu2);margin:14px 10px 6px;font-weight:600}
+nav.workspace-nav a{display:flex!important;align-items:center;gap:11px;padding:9px 11px!important;border-radius:10px!important;color:#b7c4dc!important;font-size:13.5px!important;font-weight:500!important;text-decoration:none!important;background:transparent!important;position:relative;transition:background .15s,color .15s;line-height:1.25!important}
+nav.workspace-nav a svg{width:17px;height:17px;flex:none;opacity:.8}
+nav.workspace-nav a:hover{background:rgba(148,163,184,.08)!important;color:#fff!important}
+nav.workspace-nav a.ccc-on{background:linear-gradient(90deg,rgba(34,211,238,.16),rgba(59,130,246,.06))!important;color:#fff!important;box-shadow:inset 0 0 0 1px rgba(34,211,238,.18)}
+nav.workspace-nav a.ccc-on:before{content:"";position:absolute;left:-14px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--cy);box-shadow:0 0 12px var(--cy)}
+nav.workspace-nav a.ccc-on svg{opacity:1;color:var(--cy)}
+#ccc-tam-link{margin-top:2px}
+.ccc-sbfoot{margin-top:auto;padding:12px 10px 4px;border-top:1px solid var(--line);font-size:11px;color:var(--mu2);display:flex;align-items:center;gap:8px}
+.ccc-dot{width:8px;height:8px;border-radius:50%;background:var(--gr);box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:cccpulse 2s infinite;flex:none}
+@keyframes cccpulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+/* top bar */
+#ccc-top{position:fixed;left:var(--sbw);right:0;top:0;height:var(--tb);z-index:25;display:flex;align-items:center;gap:14px;padding:0 26px;background:rgba(6,10,20,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+#ccc-crumb{font-size:12.5px;color:var(--mu)}#ccc-crumb b{color:var(--tx);font-weight:600}
+#ccc-top .sp{flex:1}
+.ccc-chip{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;color:#c5d2ea;padding:5px 10px;border:1px solid var(--line2);border-radius:999px;background:rgba(17,27,49,.7);white-space:nowrap}
+#ccc-top>div.row{position:static!important;display:flex!important;align-items:center;gap:10px;margin:0!important;padding:0!important;background:none!important;border:0!important;box-shadow:none!important}
+#ccc-top>div.row *{font-size:12px!important}
+#ccc-top>div.row button{padding:6px 12px!important}
+/* main */
+main{margin-left:var(--sbw)!important;padding:calc(var(--tb) + 22px) 28px 40px!important;max-width:none!important;position:relative;z-index:1}
+.workspace-view>h1{display:none!important}
+#status{position:relative;margin:0 0 16px!important;padding:9px 14px 9px 34px!important;font-size:12.5px!important;color:#c9d6ee!important;background:linear-gradient(90deg,rgba(34,211,238,.08),rgba(17,27,49,.6))!important;border:1px solid var(--line)!important;border-radius:10px!important}
+#status:before{content:"";position:absolute;left:14px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;background:var(--cy);box-shadow:0 0 10px var(--cy)}
+h1{font-weight:700!important;letter-spacing:-.4px}h2{font-weight:650!important;letter-spacing:-.1px;font-size:16px!important;color:#f1f5fd!important}
+.muted,small{color:var(--mu)!important}
+.panel,.card{background:linear-gradient(180deg,rgba(17,27,49,.82),rgba(12,19,36,.88))!important;border:1px solid var(--line)!important;border-radius:14px!important;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 12px 30px -18px rgba(0,0,0,.8)!important;backdrop-filter:blur(6px)}
+.panel{padding:20px 22px!important}
+.card{transition:border-color .15s,transform .15s,box-shadow .15s}.card:hover{border-color:rgba(34,211,238,.35)!important;box-shadow:var(--glow)!important}
+.panel small:first-child{letter-spacing:1.3px;font-size:10.5px!important;text-transform:uppercase;color:var(--cy)!important;opacity:.85}
+button{background:linear-gradient(135deg,#22d3ee,#3b82f6)!important;color:#04111f!important;border:0!important;border-radius:9px!important;font-weight:650!important;padding:8px 15px!important;box-shadow:0 6px 18px -8px rgba(34,211,238,.7);transition:filter .15s,transform .1s;cursor:pointer}
+button:hover{filter:brightness(1.1)}button:active{transform:translateY(1px)}
+button.secondary{background:rgba(22,34,60,.9)!important;color:#d6e2f6!important;border:1px solid var(--line2)!important;box-shadow:none}
+button.secondary:hover{border-color:rgba(34,211,238,.5)!important;color:#fff!important}
+button:disabled{opacity:.45!important;filter:grayscale(.4)}
+#ccc-ai-btn{background:#0f766e!important;color:#fff!important}
+select,input,textarea{background:#0a1222!important;color:var(--tx)!important;border:1px solid var(--line2)!important;border-radius:9px!important;padding:8px 10px!important;font:inherit;font-size:13px!important;outline:none;transition:border-color .15s,box-shadow .15s}
+select:focus,input:focus,textarea:focus{border-color:var(--cy)!important;box-shadow:0 0 0 3px rgba(34,211,238,.15)!important}
+input[type=checkbox],input[type=radio]{accent-color:var(--cy);padding:0!important}
+a{color:#67e8f9}
+table{border-collapse:separate!important;border-spacing:0!important;width:100%;font-size:12.5px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th{background:#101a30!important;color:#9fb0cf!important;text-transform:uppercase;font-size:10.5px!important;letter-spacing:.8px;font-weight:600!important;padding:9px 10px!important;border-bottom:1px solid var(--line2)!important;position:sticky;top:0}
+td{padding:8px 10px!important;border-bottom:1px solid rgba(28,41,69,.7)!important;color:#d6e0f1}
+tr:nth-child(even) td{background:rgba(17,27,49,.35)}tr:hover td{background:rgba(34,211,238,.05)}
+pre{background:#070d1a!important;border:1px solid var(--line)!important;border-radius:10px!important;color:#b9c8e2!important}
+.pill,.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px!important;padding:3px 10px!important;font-size:11px!important;font-weight:600;border:1px solid var(--line2)!important;background:rgba(22,34,60,.8)!important;color:#c5d3ec!important}
+.pill.ok{background:rgba(34,197,94,.12)!important;border-color:rgba(34,197,94,.35)!important;color:#86efac!important}
+.pill.bad{background:rgba(244,63,94,.12)!important;border-color:rgba(244,63,94,.35)!important;color:#fda4af!important}
+.msg.a{background:#0f1a30!important;border:1px solid var(--line)!important}.msg.u{background:linear-gradient(135deg,#0e3a4a,#16325f)!important}
+.chip{border-radius:999px!important;border:1px solid var(--line2)!important;background:#0f1a30!important}
+.drop{border:1.5px dashed var(--line2)!important;border-radius:12px!important;background:rgba(10,18,34,.6)!important}
+/* page header */
+.ccc-ph{display:flex;align-items:flex-start;gap:16px;margin:0 0 18px;padding:20px 22px;border-radius:16px;border:1px solid var(--line);background:linear-gradient(120deg,rgba(34,211,238,.10),rgba(59,130,246,.06) 40%,rgba(139,92,246,.06));position:relative;overflow:hidden}
+.ccc-ph:after{content:"";position:absolute;right:-60px;top:-80px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(34,211,238,.18),transparent 65%)}
+.ccc-ph .ic{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;flex:none;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.3);color:var(--cy)}
+.ccc-ph .ic svg{width:24px;height:24px}
+.ccc-ph .tt{flex:1;min-width:0}.ccc-ph .ey{font-size:10.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--cy);font-weight:600}
+.ccc-ph h1{font-size:24px!important;margin:3px 0 4px!important;color:#fff}.ccc-ph p{margin:0;color:var(--mu);font-size:13px;max-width:820px}
+.ccc-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:12px;margin:0 0 18px}
+.ccc-k{padding:14px 16px;border-radius:13px;border:1px solid var(--line);background:linear-gradient(180deg,rgba(17,27,49,.85),rgba(12,19,36,.9));position:relative;overflow:hidden}
+.ccc-k:before{content:"";position:absolute;left:0;top:0;right:0;height:2px;background:var(--c,var(--cy));opacity:.9}
+.ccc-k .l{font-size:10.5px;letter-spacing:1.1px;text-transform:uppercase;color:var(--mu);font-weight:600;display:flex;align-items:center;gap:7px}
+.ccc-k .l i{width:7px;height:7px;border-radius:2px;background:var(--c,var(--cy));display:inline-block}
+.ccc-k .v{font-size:21px;font-weight:700;color:#fff;margin-top:7px;letter-spacing:-.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ccc-k .s{font-size:11.5px;color:var(--mu);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ccc-up{color:#4ade80!important}.ccc-dn{color:#fb7185!important}
+/* overview grid */
+.ccc-g{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;margin-bottom:14px}
+.ccc-w{grid-column:span 4;padding:16px 18px;border-radius:14px;border:1px solid var(--line);background:linear-gradient(180deg,rgba(17,27,49,.85),rgba(11,18,34,.92));min-width:0}
+.ccc-w.w6{grid-column:span 6}.ccc-w.w8{grid-column:span 8}.ccc-w.w12{grid-column:span 12}.ccc-w.w3{grid-column:span 3}
+@media(max-width:1200px){.ccc-w,.ccc-w.w3,.ccc-w.w6,.ccc-w.w8{grid-column:span 12}}
+.ccc-wh{display:flex;align-items:center;gap:8px;margin-bottom:12px}.ccc-wh b{font-size:13.5px;color:#f1f5fd;font-weight:650}.ccc-wh span{font-size:11px;color:var(--mu);margin-left:auto}
+.ccc-sec{display:flex;align-items:center;gap:10px;margin:24px 0 12px;font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--mu);font-weight:600}.ccc-sec:after{content:"";flex:1;height:1px;background:var(--line)}
+.ccc-sec a{color:var(--cy);text-transform:none;letter-spacing:0;font-size:12px}
+.ccc-leg{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:#b9c6dd;margin-top:10px}.ccc-leg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.ccc-hb{display:grid;grid-template-columns:minmax(110px,38%) 1fr auto;gap:8px 10px;align-items:center;font-size:12px}
+.ccc-hb .n{color:#c9d5ea;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ccc-hb .t{height:8px;border-radius:5px;background:#16223c;overflow:hidden}.ccc-hb .t>i{display:block;height:100%;border-radius:5px}.ccc-hb .x{color:#e7eef9;font-variant-numeric:tabular-nums;font-weight:600;font-size:11.5px}
+.ccc-pr{margin:10px 0}.ccc-pr .h{display:flex;justify-content:space-between;font-size:12px;color:#c9d5ea;margin-bottom:5px}.ccc-pr .h b{color:#fff}
+.ccc-pr .t{height:9px;border-radius:6px;background:#16223c;overflow:hidden;position:relative}.ccc-pr .t>i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--te),var(--cy))}
+.ccc-tbl td,.ccc-tbl th{font-size:12px}.ccc-tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:600;border:1px solid}
+.ccc-empty{color:var(--mu);font-size:12.5px;padding:18px 4px}
+svg.ccc-ch text{fill:#8b9bb9;font-size:10.5px;font-family:inherit}
+#work-home>.grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;gap:12px!important}
+#work-home>.grid .card{padding:14px 16px!important}#work-home>.grid .card h2{font-size:14px!important;margin:0 0 6px!important}
+.ccc-ctx{padding:12px 18px!important;margin:0 0 16px!important}.ccc-ctx p.muted{font-size:12px!important;margin:6px 0 0!important}.ccc-ctx:before{content:"Workspace context";display:block;font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--mu2);font-weight:600;margin-bottom:8px}
+.ccc-tip{position:fixed;pointer-events:none;z-index:99999;background:#0b1325;border:1px solid var(--line2);color:#e7eef9;font-size:11.5px;padding:6px 9px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);display:none;white-space:nowrap}
+</style>
+<script id="ccc-theme-js">(function(){if(window.__cccTheme)return;window.__cccTheme=1;
+var $=function(s,r){return(r||document).querySelector(s)},$$=function(s,r){return[].slice.call((r||document).querySelectorAll(s))};
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function fm(v,cur){if(v==null||isNaN(v))return'\u2014';var a=Math.abs(v),s=a>=1e9?(v/1e9).toFixed(2)+'B':a>=1e6?(v/1e6).toFixed(2)+'M':a>=1e3?(v/1e3).toFixed(1)+'K':(+v).toFixed(0);return(cur?cur+' ':'')+s}
+function fn(v){return v==null?'\u2014':Number(v).toLocaleString('en-US')}
+function pct(v){return v==null||isNaN(v)?'\u2014':(v*100).toFixed(1).replace(/\.0$/,'')+'%'}
+var P=['#22d3ee','#3b82f6','#8b5cf6','#2dd4bf','#f5a524','#f43f5e','#22c55e','#e879f9','#94a3b8'];
+var I={home:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',assess:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6M11 8v6"/>',price:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M8 18h8"/>',ai:'<path d="M12 3l2.2 5.3L20 10l-5.8 1.7L12 17l-2.2-5.3L4 10l5.8-1.7z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/>',dms:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M9 14h6M9 17h4"/>',prop:'<path d="M4 4h16v12H5.2L4 17.2z"/><path d="M8 8h8M8 12h5"/>',jobs:'<path d="M3 12h4l3 8 4-16 3 8h4"/>',set:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',tam:'<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>'};
+function ic(k){return'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(I[k]||'')+'</svg>'}
+var PAGES={'work-home':{k:'home',g:'Overview',t:'Command Overview',e:'Executive overview',d:'Live view of your Azure assessments, bills, calculator coverage and the TAM business in one place.'},
+'work-assessment':{k:'assess',g:'Assess & price',t:'Azure Assessment',e:'Discovery \u00b7 Cost Management \u00b7 Pricing Calculator',d:"Read-only discovery of a client's Azure estate and real bill, turned into an apple-to-apple Azure Pricing Calculator link and BOQ. No AI tokens."},
+'work-pricing':{k:'price',g:'Assess & price',t:'Pricing Calculator & BOQ',e:'Estimator \u00b7 Azure Retail Prices',d:'Price a BOQ, RVTools or Azure Migrate file, or a written requirement, with official Azure prices: pay-as-you-go, reserved, savings plan and Azure Hybrid Benefit.'},
+'work-foundry':{k:'ai',g:'AI & documents',t:'AI Foundry',e:'Azure AI Foundry \u00b7 gpt-6.1-sol',d:'Chat with your Azure AI Foundry model. The app tools fetch official prices, build BOQs and read your estate.'},
+'work-dms':{k:'dms',g:'AI & documents',t:'DMS Search',e:'Documents',d:'Search proposals, SOWs and supporting documents.'},
+'work-proposal':{k:'prop',g:'AI & documents',t:'Noventiq Proposal Studio',e:'Proposals \u00b7 Seven Seas template',d:'Turn emails, BOQs and project details into a Seven Seas / Noventiq Word proposal with the corporate Scope of Work template.'},
+'work-jobs':{k:'jobs',g:'Operations',t:'Jobs & CIO Review',e:'Operations',d:'Every discovery, calculator and estimate run, with status and evidence for review.'},
+'work-settings':{k:'set',g:'Operations',t:'Connections & Settings',e:'Configuration',d:'Azure sign-in, calculator sign-in, AI Foundry connection and app settings.'}};
+var NAVK={'Home':'home','Azure Assessment':'assess','Pricing Calculator & BOQ':'price','AI Foundry':'ai','DMS Search':'dms','Noventiq Proposal Studio':'prop','Jobs & CIO Review':'jobs','Connections & Settings':'set','TAM Dashboard':'tam'};
+var GRP={'Home':'Overview','Azure Assessment':'Assess & price','AI Foundry':'AI & documents','Jobs & CIO Review':'Operations','TAM Dashboard':'Business'};
+var ST=null,TAM={},tip;
+function shell(){var a=$('aside.hosted-sidebar');if(!a||a.dataset.ccc)return;a.dataset.ccc=1;
+ var b=$('.brand',a);if(b)b.innerHTML='<span class="ccc-logo"><svg viewBox="0 0 24 24" fill="none" stroke="#04111f" stroke-width="2.4" stroke-linecap="round"><path d="M4 15a5 5 0 0 1 4-7.9A6 6 0 0 1 19.5 9 4 4 0 0 1 19 17H7"/><path d="M9 13l2 2 4-4"/></svg></span><span class="ccc-bt"><b>Cloud Command Center</b><small>Noventiq \u00b7 Seven Seas</small></span>';
+ $$('nav.workspace-nav a',a).forEach(function(x){var t=x.textContent.trim();if(GRP[t]){var g=document.createElement('div');g.className='ccc-grp';g.textContent=GRP[t];x.parentNode.insertBefore(g,x)}
+  if(!x.querySelector('svg'))x.insertAdjacentHTML('afterbegin',ic(NAVK[t]||'home'))});
+ var f=document.createElement('div');f.className='ccc-sbfoot';f.innerHTML='<span class="ccc-dot"></span><span>Production \u00b7 UAE North<br>Azure Container Apps</span>';a.appendChild(f);
+ var top=document.createElement('div');top.id='ccc-top';top.innerHTML='<div id="ccc-crumb"></div><div class="sp"></div><span class="ccc-chip" id="ccc-ai-chip" title="Azure AI Foundry model used by Ask Cloud Center"><span class="ccc-dot"></span>AI \u00b7 gpt-6.1-sol</span><span class="ccc-chip" id="ccc-clock"></span>';document.body.appendChild(top);
+ var row=[].slice.call(document.body.children).filter(function(e){return e.matches&&e.matches('div.row')&&getComputedStyle(e).position==='fixed'})[0];if(row)top.appendChild(row);
+ tip=document.createElement('div');tip.className='ccc-tip';document.body.appendChild(tip);
+ clock();setInterval(clock,30000)}
+function clock(){var c=$('#ccc-clock');if(!c)return;try{c.textContent=new Date().toLocaleString('en-GB',{timeZone:'Asia/Dubai',weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+' GST'}catch(e){c.textContent=new Date().toLocaleString()}}
+function cur(){var h=(location.hash||'#work-home').slice(1);return PAGES[h]?h:'work-home'}
+function headers(){Object.keys(PAGES).forEach(function(id){var s=document.getElementById(id);if(!s||s.querySelector('.ccc-ph'))return;var p=PAGES[id];
+ var h=document.createElement('div');h.className='ccc-ph';h.innerHTML='<div class="ic">'+ic(p.k)+'</div><div class="tt"><div class="ey">'+esc(p.e)+'</div><h1>'+esc(p.t)+'</h1><p>'+esc(p.d)+'</p></div>';
+ var k=document.createElement('div');k.className='ccc-kpis';k.id=id+'-kpis';
+ var h1=s.querySelector(':scope>h1');if(h1){h1.after(h);h.after(k)}else{s.prepend(k);s.prepend(h)}});}
+function nav(){var id=cur(),p=PAGES[id];var c=$('#ccc-crumb');if(c)c.innerHTML='Cloud Command Center <span style="opacity:.5">/</span> '+esc(p.g)+' <span style="opacity:.5">/</span> <b>'+esc(p.t)+'</b>';
+ $$('nav.workspace-nav a').forEach(function(a){a.classList.toggle('ccc-on',(a.getAttribute('href')||'')==='#'+id)});document.title=p.t+' \u00b7 Cloud Command Center';var m=document.getElementById('mode'),ctx=m&&m.closest('.panel');var k=document.getElementById(id+'-kpis'),hs=id==='work-home'&&document.querySelector('#work-home>.ccc-sec');if(ctx&&k){ctx.classList.add('ccc-ctx');if(hs)hs.before(ctx);else k.after(ctx)}}
+function kpi(l,v,s,c,t){return'<div class="ccc-k" style="--c:'+(c||'var(--cy)')+'"'+(t?' title="'+esc(t)+'"':'')+'><div class="l"><i></i>'+esc(l)+'</div><div class="v">'+v+'</div><div class="s">'+(s||'&nbsp;')+'</div></div>'}
+function jobs(){var d=(ST&&ST.discovery_jobs)||{};return Object.keys(d).map(function(k){var j=d[k];j._id=k;return j}).sort(function(a,b){return String(b.created_utc||'').localeCompare(String(a.created_utc||''))})}
+function done(j){return/done|complete|finish|ready|success/i.test(j.status||'')}
+function cjobs(o){o=o||{};return Object.keys(o).map(function(k){return o[k]})}
+function tipOn(e){var t=e.target.closest('[data-tip]');if(!t||!tip){if(tip)tip.style.display='none';return}tip.textContent=t.getAttribute('data-tip');tip.style.display='block';tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY+12)+'px'}
+document.addEventListener('mousemove',tipOn);
+/* charts */
+function bars(data,o){o=o||{};var W=560,H=o.h||200,pl=46,pb=26,pt=10,n=data.length;if(!n)return'<div class="ccc-empty">No data yet.</div>';var ser=o.series||[{k:'v',c:P[0]}];
+ var mx=Math.max.apply(null,data.map(function(d){return Math.max.apply(null,ser.map(function(s){return+d[s.k]||0}))}))||1;var gw=(W-pl-8)/n,bw=Math.min(34,(gw-10)/ser.length),s='';
+ for(var g=0;g<=4;g++){var y=pt+(H-pt-pb)*(1-g/4);s+='<line x1="'+pl+'" x2="'+W+'" y1="'+y+'" y2="'+y+'" stroke="#1c2945" stroke-dasharray="'+(g?'3 4':'')+'"/><text x="'+(pl-8)+'" y="'+(y+3)+'" text-anchor="end">'+fm(mx*g/4)+'</text>'}
+ data.forEach(function(d,i){var x0=pl+i*gw+(gw-bw*ser.length-(ser.length-1)*3)/2;ser.forEach(function(se,j){var v=+d[se.k]||0,h=(H-pt-pb)*v/mx,x=x0+j*(bw+3),y=H-pb-h;s+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+Math.max(h,1)+'" rx="4" fill="'+se.c+'" data-tip="'+esc(d.l+' \u00b7 '+(se.n||'')+' '+fm(v,o.cur))+'"/>'});
+  s+='<text x="'+(pl+i*gw+gw/2)+'" y="'+(H-8)+'" text-anchor="middle">'+esc(String(d.l).slice(0,12))+'</text>'});
+ return'<svg class="ccc-ch" viewBox="0 0 '+W+' '+H+'" width="100%" preserveAspectRatio="none" style="height:'+H+'px">'+s+'</svg>'}
+function area(data,o){o=o||{};var W=560,H=o.h||200,pl=46,pb=26,pt=12,n=data.length;if(n<2)return'<div class="ccc-empty">Not enough data.</div>';var mx=Math.max.apply(null,data.map(function(d){return d.v}))*1.1||1,mn=0;
+ var X=function(i){return pl+(W-pl-14)*i/(n-1)},Y=function(v){return pt+(H-pt-pb)*(1-(v-mn)/(mx-mn))},s='<defs><linearGradient id="cccg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#22d3ee" stop-opacity=".35"/><stop offset="1" stop-color="#22d3ee" stop-opacity="0"/></linearGradient></defs>';
+ for(var g=0;g<=4;g++){var y=pt+(H-pt-pb)*(1-g/4);s+='<line x1="'+pl+'" x2="'+W+'" y1="'+y+'" y2="'+y+'" stroke="#1c2945" stroke-dasharray="'+(g?'3 4':'')+'"/><text x="'+(pl-8)+'" y="'+(y+3)+'" text-anchor="end">'+fm(mx*g/4)+'</text>'}
+ var pts=data.map(function(d,i){return X(i)+','+Y(d.v)}).join(' ');s+='<polygon points="'+X(0)+','+(H-pb)+' '+pts+' '+X(n-1)+','+(H-pb)+'" fill="url(#cccg)"/><polyline points="'+pts+'" fill="none" stroke="#22d3ee" stroke-width="2.4" stroke-linejoin="round"/>';
+ data.forEach(function(d,i){s+='<circle cx="'+X(i)+'" cy="'+Y(d.v)+'" r="4" fill="#0b1325" stroke="#22d3ee" stroke-width="2" data-tip="'+esc(d.l+' \u00b7 '+fm(d.v,o.cur))+'"/><text x="'+X(i)+'" y="'+(H-8)+'" text-anchor="middle">'+esc(d.l)+'</text>'});
+ return'<svg class="ccc-ch" viewBox="0 0 '+W+' '+H+'" width="100%" preserveAspectRatio="none" style="height:'+H+'px">'+s+'</svg>'}
+function donut(items,o){o=o||{};var tot=items.reduce(function(a,b){return a+(+b.v||0)},0);if(!tot)return'<div class="ccc-empty">No data yet.</div>';var R=62,r=42,cx=80,cy=80,a=-Math.PI/2,s='';
+ items.forEach(function(it,i){var f=(+it.v||0)/tot;if(!f)return;var a2=a+f*Math.PI*2-(f===1?1e-4:0),la=f>.5?1:0,c=it.c||P[i%P.length];
+  var p='M'+(cx+R*Math.cos(a))+' '+(cy+R*Math.sin(a))+'A'+R+' '+R+' 0 '+la+' 1 '+(cx+R*Math.cos(a2))+' '+(cy+R*Math.sin(a2))+'L'+(cx+r*Math.cos(a2))+' '+(cy+r*Math.sin(a2))+'A'+r+' '+r+' 0 '+la+' 0 '+(cx+r*Math.cos(a))+' '+(cy+r*Math.sin(a))+'Z';
+  s+='<path d="'+p+'" fill="'+c+'" stroke="#0b1325" stroke-width="2" data-tip="'+esc(it.l+' \u00b7 '+fn(it.v)+' ('+(f*100).toFixed(0)+'%)')+'"/>';a=a2});
+ s+='<text x="80" y="76" text-anchor="middle" style="fill:#fff;font-size:20px;font-weight:700">'+esc(o.center||fn(tot))+'</text><text x="80" y="94" text-anchor="middle">'+esc(o.sub||'total')+'</text>';
+ var lg='<div class="ccc-leg" style="flex-direction:column;gap:7px;margin:0">'+items.map(function(it,i){return'<span><i style="background:'+(it.c||P[i%P.length])+'"></i>'+esc(it.l)+' <b style="color:#fff;margin-left:4px">'+fn(it.v)+'</b></span>'}).join('')+'</div>';
+ return'<div style="display:flex;align-items:center;gap:18px"><svg class="ccc-ch" viewBox="0 0 160 160" width="150" height="150">'+s+'</svg>'+lg+'</div>'}
+function hbars(items,o){o=o||{};if(!items.length)return'<div class="ccc-empty">No data yet.</div>';var mx=Math.max.apply(null,items.map(function(i){return i.v}))||1;
+ return'<div class="ccc-hb">'+items.map(function(it,i){return'<span class="n" title="'+esc(it.l)+'">'+esc(it.l)+'</span><span class="t"><i style="width:'+(100*it.v/mx).toFixed(1)+'%;background:'+(it.c||o.c||P[i%P.length])+'"></i></span><span class="x">'+(o.money?fm(it.v,o.cur):fn(it.v))+'</span>'}).join('')+'</div>'}
+function prog(l,a,t,cur){var f=t?Math.min(1,a/t):0;return'<div class="ccc-pr"><div class="h"><span>'+esc(l)+'</span><span><b>'+fm(a,cur)+'</b> / '+fm(t,cur)+' \u00b7 '+(t?(100*a/t).toFixed(0):0)+'%</span></div><div class="t"><i style="width:'+(f*100).toFixed(1)+'%"></i></div></div>'}
+function w(cls,title,sub,body){return'<div class="ccc-w '+cls+'"><div class="ccc-wh"><b>'+esc(title)+'</b><span>'+esc(sub||'')+'</span></div>'+body+'</div>'}
+/* pages */
+function home(){var s=document.getElementById('work-home');if(!s)return;var box=$('#ccc-overview');if(!box){box=document.createElement('div');box.id='ccc-overview';var k=$('#work-home-kpis');k.after(box);var g=s.querySelector(':scope>.grid');if(g){var t=document.createElement('div');t.className='ccc-sec';t.textContent='Workspace shortcuts';g.before(t);nav()}}
+ var J=jobs(),D=J.filter(done),L=D[0]||J[0],ms=(L&&L.month_summary)||{},cust=(ST&&ST.customers)||[];
+ var calc=cjobs(ST&&ST.calc_agent_jobs),est=cjobs(ST&&ST.estimator_jobs),acct=(ST&&ST.azure_account)||{};
+ var res=J.reduce(function(a,j){return a+(+j.resources||0)},0);
+ $('#work-home-kpis').innerHTML=kpi('Client assessments',fn(J.length),fn(D.length)+' completed \u00b7 '+fn(cust.length)+' customers','var(--cy)')+
+  kpi('Latest bill',L?fm(ms.actual_total,ms.currency||'USD'):'\u2014',L?esc((L.customer||'')+' \u00b7 '+(ms.label||L.period||'')):'Run an assessment','var(--bl)')+
+  kpi('Calculator coverage',ms.in_calculator_pct!=null?(+ms.in_calculator_pct).toFixed(1)+'%':'\u2014',ms.itemised_pct!=null?'Itemised '+(+ms.itemised_pct).toFixed(1)+'% of bill':'&nbsp;','var(--te)')+
+  kpi('Resources discovered',fn(res),'Across '+fn(J.length)+' runs','var(--vi)')+
+  kpi('EA spend \u00b7 '+(TAM.ea?TAM.ea.latestPeriod:''),TAM.ea?fm(TAM.ea.kpis.latestMonthCost,'$'):'\u2014',TAM.ea?'<span class="'+(TAM.ea.kpis.momPct>=0?'ccc-up':'ccc-dn')+'">'+(TAM.ea.kpis.momPct>=0?'\u25b2 ':'\u25bc ')+Math.abs(TAM.ea.kpis.momPct).toFixed(1)+'%</span> vs last month':'&nbsp;','var(--am)')+
+  kpi('Azure sign-in',acct.signed_in?'Connected':'Not signed in',esc(acct.user||''),acct.signed_in?'var(--gr)':'var(--rd)');
+ var runs=J.slice(0,8).reverse().map(function(j){var m=j.month_summary||{};return{l:(j.customer||'Run').split(/\s+/)[0]+' '+String(m.label||j.period||'').slice(0,3),v:+m.actual_total||0}});
+ var cov=(L&&L.coverage)||{},covI=Object.keys(cov).map(function(k,i){return{l:k,v:cov[k],c:['#22d3ee','#f5a524','#5f6f8e','#8b5cf6'][i%4]}});
+ var types={};((L&&L.summary)||[]).forEach(function(r){var t=String(r.type||'').split('/').pop();types[t]=(types[t]||0)+(+r.count||0)});var tI=Object.keys(types).map(function(k){return{l:k,v:types[k]}}).sort(function(a,b){return b.v-a.v}).slice(0,8);
+ var h='<div class="ccc-g">'+w('w8','Monthly Azure bill by assessment','USD \u00b7 latest 8 runs',bars(runs,{cur:'$',series:[{k:'v',c:'#3b82f6',n:'Bill'}]}))+w('','Calculator coverage',L?esc(L.customer||''):'',donut(covI,{center:ms.in_calculator_pct!=null?(+ms.in_calculator_pct).toFixed(0)+'%':fn(covI.reduce(function(a,b){return a+b.v},0)),sub:'in calculator'}))+'</div>';
+ h+='<div class="ccc-g">'+w('w6','Resource mix',L?'Latest run \u00b7 '+esc(L.customer||''):'',hbars(tI))+w('w6','Recent activity','Assessments, calculator and estimates',recent(J,calc,est))+'</div>';
+ if(TAM.ea||TAM.svc||TAM.ammp){h+='<div class="ccc-sec">Business pulse \u00b7 TAM <a href="/tam">Open TAM Dashboard \u2192</a></div><div class="ccc-g">';
+  if(TAM.ea)h+=w('w8','EA spend trend','Billing account '+esc(TAM.ea.billingAccount)+' \u00b7 USD',area(TAM.ea.trend.map(function(t){return{l:t.period.slice(2).replace('-','/'),v:t.cost}}),{cur:'$'}));
+  if(TAM.ammp){var r=TAM.ammp.datasets.current.records,inv=r.filter(function(x){return x.invoiceNumber}).length;h+=w('','AMMP claims',fm(TAM.ammp.summary.totalClaimValueUsd,'$')+' total value',donut([{l:'Invoiced',v:inv,c:'#22c55e'},{l:'Not invoiced',v:r.length-inv,c:'#f5a524'}],{sub:'claims'}))}
+  h+='</div><div class="ccc-g">';
+  if(TAM.ea)h+=w('w6','Top Azure services','EA \u00b7 latest month \u00b7 USD',hbars(TAM.ea.topServices.slice(0,7).map(function(t){return{l:t.name,v:t.cost}}),{money:1,cur:'$',c:'#8b5cf6'}));
+  if(TAM.svc){var f=TAM.svc.fy||{},tm=(TAM.svc.meta||{}).teams||[],ph='';ph+=prog('Total FY',((f.Total||{}).ach||{}).rev,((f.Total||{}).target||{}).rev,'AED');tm.forEach(function(t){if(f[t]&&f[t].target&&f[t].target.rev)ph+=prog(t,f[t].ach.rev,f[t].target.rev,'AED')});
+   var st={};(TAM.svc.deals||[]).forEach(function(d){st[d.stage]=(st[d.stage]||0)+1});h+=w('w6','Services forecast '+esc((TAM.svc.meta||{}).fy||''),'Revenue achieved vs target \u00b7 AED',ph+'<div class="ccc-leg">'+Object.keys(st).map(function(k,i){return'<span><i style="background:'+['#22c55e','#3b82f6','#f5a524'][i%3]+'"></i>'+esc(k)+' '+st[k]+'</span>'}).join('')+'</div>')}
+  h+='</div>'}
+ box.innerHTML=h}
+function recent(J,calc,est){var rows=[];J.slice(0,6).forEach(function(j){rows.push({t:j.created_utc,k:'Assessment',n:(j.customer||'')+(j.period?' \u00b7 '+j.period:''),s:j.status})});
+ calc.slice(0,4).forEach(function(c){rows.push({t:c.created_utc,k:'Calculator',n:c.name||c.mode||'',s:c.status})});est.slice(0,3).forEach(function(c){rows.push({t:c.created_utc,k:'Estimate',n:c.name||'',s:c.status})});
+ rows.sort(function(a,b){return String(b.t||'').localeCompare(String(a.t||''))});if(!rows.length)return'<div class="ccc-empty">No runs yet.</div>';
+ return'<table class="ccc-tbl"><tr><th>When</th><th>Type</th><th>Item</th><th>Status</th></tr>'+rows.slice(0,7).map(function(r){var ok=/done|complete|ready|success|finish/i.test(r.s||''),bad=/fail|error/i.test(r.s||'');
+  return'<tr><td style="white-space:nowrap">'+esc(String(r.t||'').replace('T',' ').slice(5,16))+'</td><td>'+esc(r.k)+'</td><td>'+esc(r.n)+'</td><td><span class="ccc-tag" style="color:'+(ok?'#86efac':bad?'#fda4af':'#fcd34d')+';border-color:'+(ok?'rgba(34,197,94,.4)':bad?'rgba(244,63,94,.4)':'rgba(245,165,36,.4)')+'">'+esc(r.s||'\u2014')+'</span></td></tr>'}).join('')+'</table>'}
+function pageKpis(){var CSL=function(c){return c.remembered?'Remembered':/never|none|^$/i.test(c.status||'')?'Not signed in':String(c.status)};var J=jobs(),D=J.filter(done),L=D[0]||J[0],ms=(L&&L.month_summary)||{},calc=cjobs(ST&&ST.calc_agent_jobs),est=cjobs(ST&&ST.estimator_jobs),acct=(ST&&ST.azure_account)||{},cs=(ST&&ST.calc_signin)||{};
+ var set=function(id,h){var e=document.getElementById(id+'-kpis');if(e)e.innerHTML=h;if(e&&!h)e.style.display='none'};
+ set('work-assessment',kpi('Assessments run',fn(J.length),fn(D.length)+' completed','var(--cy)')+kpi('Last client',L?esc(L.customer||'\u2014'):'\u2014',L?esc(ms.label||L.period||''):'&nbsp;','var(--bl)')+kpi('Last bill',L?fm(ms.actual_total,ms.currency||'USD'):'\u2014',L?fn(ms.billed_resources)+' billed resources':'&nbsp;','var(--vi)')+kpi('In calculator',ms.in_calculator_pct!=null?(+ms.in_calculator_pct).toFixed(1)+'%':'\u2014','of billed services','var(--te)')+kpi('Azure sign-in',acct.signed_in?'Connected':'Not signed in',esc(acct.user||''),acct.signed_in?'var(--gr)':'var(--rd)'));
+ set('work-pricing',kpi('Estimates',fn(est.length),'BOQ / RVTools / Migrate runs','var(--cy)')+kpi('Calculator jobs',fn(calc.length),fn(calc.filter(done).length)+' completed','var(--bl)')+kpi('Price source','Azure Retail','Official prices API','var(--te)')+kpi('Calculator sign-in',CSL(cs),'','var(--vi)'));
+ set('work-foundry',kpi('Model','gpt-6.1-sol','Azure AI Foundry','var(--vi)')+kpi('Authentication','Managed identity','No keys stored','var(--te)')+kpi('Assistant','Ask Cloud Center','Internal data first','var(--cy)'));
+ set('work-jobs',kpi('Assessments',fn(J.length),fn(D.length)+' completed \u00b7 '+fn(J.filter(function(j){return/fail|error/i.test(j.status||'')}).length)+' failed','var(--cy)')+kpi('Calculator jobs',fn(calc.length),fn(calc.filter(done).length)+' completed','var(--bl)')+kpi('Estimates',fn(est.length),'','var(--vi)')+kpi('Run history',fn(((ST&&ST.results)||[]).length),'saved results','var(--te)'));
+ set('work-settings',kpi('Azure account',acct.signed_in?'Signed in':'Signed out',esc(acct.user||''),acct.signed_in?'var(--gr)':'var(--rd)')+kpi('Calculator',CSL(cs),'Azure Pricing Calculator sign-in','var(--bl)')+kpi('AI Foundry','Connected','gpt-6.1-sol \u00b7 managed identity','var(--vi)')+kpi('Hosting','UAE North','Azure Container Apps','var(--te)'));
+ set('work-dms','');set('work-proposal','')}
+function load(){fetch('/api/state',{credentials:'same-origin'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j)ST=j;render()}).catch(render)}
+function loadTam(){[['ea','data/ea_dashboard.json'],['ammp','data/ammp_opportunities.json'],['svc','data/services-forecast.json']].forEach(function(x){fetch('/tam/'+x[1],{credentials:'same-origin'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j){TAM[x[0]]=j;render()}}).catch(function(){})})}
+var rt;function render(){clearTimeout(rt);rt=setTimeout(function(){try{home();pageKpis()}catch(e){console.warn('ccc theme',e)}},60)}
+function init(){shell();headers();nav();render();load();loadTam();setInterval(load,60000)}
+window.addEventListener('hashchange',function(){nav()});
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();})();</script>
+<!--/ccc-theme-->

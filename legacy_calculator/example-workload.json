@@ -1,0 +1,9 @@
+{
+  "name": "Synthetic VM test - public USD estimate",
+  "currency": "USD",
+  "items": [
+    {"service": "Virtual Machines", "region": "East US", "instance": "D2 v3", "os": "Windows", "quantity": 1, "hours": 730}
+  ],
+  "exclusions": ["Managed disks", "Storage transactions", "Outbound data transfer", "Backup", "Monitoring", "Taxes", "Customer agreement discounts"],
+  "questions": []
+}
