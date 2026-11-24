@@ -31,7 +31,7 @@
   function element(tag,text){const node=document.createElement(tag);node.textContent=text;return node;}
   function control(parent,label,action){const button=element('button',label);button.type='button';parent.append(button);
     button.onclick=async()=>{button.disabled=true;status.textContent='';try{await action();}catch(error){status.textContent=error.message;}finally{button.disabled=false;}};return button;}
-  function context(){return {tenant:document.getElementById('dc-tenant')?.value,subscriptions:dcSubs()};}
+  function context(){return {tenant:document.getElementById('dc-tenant')?.value,subscriptions:dcSubs().sort()};}
   function customer(){return document.getElementById('dc-tenant')?.selectedOptions[0]?.textContent.split(' · ')[0]||'Customer';}
   function ready(){const c=context();if(!c.tenant||!c.subscriptions.length)throw new Error('Load a customer directory and select subscriptions first.');return c;}
   async function api(body){const response=await fetch('/api/supervisor',{method:'POST',headers:{'Content-Type':'application/json','X-Local-Token':token},body:JSON.stringify({channel:'assessment-hub',...context(),...body})});
