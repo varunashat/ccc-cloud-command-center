@@ -34,6 +34,20 @@
   function context(){return {tenant:document.getElementById('dc-tenant')?.value,subscriptions:dcSubs().sort()};}
   function customer(){return document.getElementById('dc-tenant')?.selectedOptions[0]?.textContent.split(' · ')[0]||'Customer';}
   function ready(){const c=context();if(!c.tenant||!c.subscriptions.length)throw new Error('Load a customer directory and select subscriptions first.');return c;}
+  const signInBox=document.createElement('div');scopeBox.append(signInBox);
+  control(signInBox,'Refresh selected directory sign-in',async()=>{
+    const c=ready();
+    const response=await fetch('/api/supervisor',{method:'POST',headers:{'Content-Type':'application/json','X-Local-Token':token},body:JSON.stringify({action:'refresh-tenant-signin',tenant:c.tenant})});
+    const flow=await response.json();if(!response.ok)throw new Error(flow.error||'Could not start sign-in.');
+    const instructions=document.createElement('p');const link=element('a','Open Microsoft sign-in');link.href=flow.url;link.target='_blank';link.rel='noopener';
+    instructions.append(link,element('span',' and enter this code: '),element('strong',flow.code));signInBox.append(instructions);
+    const poll=async()=>{try{const r=await fetch('/auth/poll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fid:flow.fid})});const state=await r.json();
+      if(state.status==='done'){instructions.textContent='Microsoft sign-in refreshed. You can resume the selected customer run.';await load();return;}
+      if(state.status==='pending'){setTimeout(poll,3000);return;}
+      instructions.textContent=state.message||state.error||'Sign-in did not complete.';
+    }catch(error){instructions.textContent=error.message;}};
+    setTimeout(poll,3000);
+  });
   async function api(body){const response=await fetch('/api/supervisor',{method:'POST',headers:{'Content-Type':'application/json','X-Local-Token':token},body:JSON.stringify({channel:'assessment-hub',...context(),...body})});
     const data=await response.json();if(!response.ok)throw new Error(data.error||'Assessment request failed.');return data;}
   function download(parent,name,data,type='application/json'){control(parent,'Download '+name,()=>{const a=document.createElement('a');const url=URL.createObjectURL(new Blob([typeof data==='string'?data:JSON.stringify(data,null,2)],{type}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});}
@@ -75,14 +89,14 @@
     if(!page){restoreScope();return;}moveScope();title.textContent=page[0];subtitle.textContent=page[1];document.title=page[0]+' · Cloud Command Center';shownJob=null;currentJobs=[];render();
     load().catch(error=>{status.textContent=error.message;});timer=setInterval(()=>load().catch(error=>{status.textContent=error.message;}),15000);}
   const nav=document.querySelector('nav.workspace-nav');for(const [hash,page]of Object.entries(pages)){const a=element('a',page[0]);a.href=hash;nav?.append(a);}
-  scopeBox.addEventListener('change',()=>{shownJob=null;currentJobs=[];render();load().catch(error=>{status.textContent=error.message;});});
-  window.addEventListener('hashchange',navigate);navigate();
+  scopeBox.addEventListener('change',event=>{if(event.target===document.getElementById('dc-tenant'))document.getElementById('dc-sublist').replaceChildren();shownJob=null;currentJobs=[];selectedLabel.textContent=customer()+' · Select authorized subscriptions.';render();load().catch(error=>{status.textContent=error.message;});});
+  window.addEventListener('hashchange',navigate);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',navigate);else navigate();
 
   const selectionKey='ccc-azure-scope:'+window.CCC_SERVER.user;
   let restoredTenant=false,remembered;
   try{remembered=JSON.parse(localStorage.getItem(selectionKey)||'null');}catch{}
   function rememberScope(){const c=context();if(c.tenant&&c.subscriptions.length){try{localStorage.setItem(selectionKey,JSON.stringify(c));}catch{}}}
-  document.getElementById('dc-tenant')?.addEventListener('change',rememberScope);
   document.getElementById('dc-sublist')?.addEventListener('change',rememberScope);
   const tenantSelect=document.getElementById('dc-tenant'),subList=document.getElementById('dc-sublist');
   if(tenantSelect&&subList){
@@ -96,7 +110,7 @@
         remembered=null;rememberScope();if(pages[location.hash])load().catch(error=>{status.textContent=error.message;});
       }
     };
-    new MutationObserver(restore).observe(tenantSelect,{childList:true});new MutationObserver(restore).observe(subList,{childList:true});restore();
+    new MutationObserver(restore).observe(tenantSelect,{childList:true});new MutationObserver(()=>{restore();if(subList.querySelector('.dc-sub:checked')){rememberScope();if(pages[location.hash])load().catch(error=>{status.textContent=error.message;});}}).observe(subList,{childList:true});restore();
   }
 
   const homeSummary=document.createElement('section');homeSummary.className='panel';homeSummary.append(element('h2','Latest customer assessments'));

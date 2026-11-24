@@ -143,18 +143,21 @@ def finish_login(result, cache, fid):
         st.update(status='failed', message=(result.get('error_description') or 'Sign-in failed.')[:300]); return
     if email not in allowed():
         st.update(status='denied', message=f'{email or "This account"} is not allowed to use this app.'); return
+    if st.get('owner') and st['owner'] != email:
+        st.update(status='denied', message='Use the same work account that is signed into this dashboard.'); return
     p = cache_path(email); p.parent.mkdir(parents=True, exist_ok=True)
     cache.has_state_changed = True; save_cache(email, cache)
     st.update(status='done', email=email, cookie=make_session(email))
     logging.info('login=ok')
 
 
-def start_device(fid):
-    a, cache = msal_app(__import__('msal').SerializableTokenCache())
+def start_device(fid, tenant='organizations', owner=None):
+    cache = load_cache(owner) if owner else __import__('msal').SerializableTokenCache()
+    a, cache = msal_app(cache, tenant)
     flow = a.initiate_device_flow(scopes=ARM_SCOPE)
     if 'user_code' not in flow:
         raise ValueError('Microsoft refused the device-code sign-in: ' + str(flow.get('error_description', ''))[:200])
-    _FLOWS[fid] = {'status': 'pending', 'kind': 'device', 'code': flow['user_code'], 'url': flow['verification_uri'], 'created': time.time()}
+    _FLOWS[fid] = {'status': 'pending', 'kind': 'device', 'code': flow['user_code'], 'url': flow['verification_uri'], 'created': time.time(), 'owner': owner}
 
     def wait():
         try:
@@ -366,6 +369,11 @@ class Handler(app.Handler):
                 payload = json.loads(self.rfile.read(size))
                 if not isinstance(payload, dict):
                     raise ValueError('Invalid job request.')
+                if payload.get('action') == 'refresh-tenant-signin':
+                    tenant = str(uuid.UUID(str(payload.get('tenant'))))
+                    fid = secrets.token_urlsafe(16)
+                    flow = start_device(fid, tenant, current_user())
+                    return self.send(200, {'fid': fid, 'code': flow['code'], 'url': flow['url']})
                 if payload.get('channel') == 'assessment-chat':
                     who = current_user()
                     caller = hub_jobs.azure.make_caller(lambda tenant: user_token(who, tenant), retries=0, timeout=20)
