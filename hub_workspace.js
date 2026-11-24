@@ -78,6 +78,33 @@
   scopeBox.addEventListener('change',()=>{shownJob=null;currentJobs=[];render();load().catch(error=>{status.textContent=error.message;});});
   window.addEventListener('hashchange',navigate);navigate();
 
+  const selectionKey='ccc-azure-scope:'+window.CCC_SERVER.user;
+  let restoredTenant=false,remembered;
+  try{remembered=JSON.parse(localStorage.getItem(selectionKey)||'null');}catch{}
+  function rememberScope(){const c=context();if(c.tenant&&c.subscriptions.length){try{localStorage.setItem(selectionKey,JSON.stringify(c));}catch{}}}
+  document.getElementById('dc-tenant')?.addEventListener('change',rememberScope);
+  document.getElementById('dc-sublist')?.addEventListener('change',rememberScope);
+  const tenantSelect=document.getElementById('dc-tenant'),subList=document.getElementById('dc-sublist');
+  if(tenantSelect&&subList){
+    const restore=()=>{
+      if(!remembered)return;
+      if(!restoredTenant&&[...tenantSelect.options].some(option=>option.value===remembered.tenant)){
+        restoredTenant=true;tenantSelect.value=remembered.tenant;tenantSelect.dispatchEvent(new Event('change',{bubbles:true}));return;
+      }
+      if(restoredTenant&&tenantSelect.value===remembered.tenant&&subList.querySelector('.dc-sub')){
+        for(const checkbox of subList.querySelectorAll('.dc-sub'))checkbox.checked=remembered.subscriptions.includes(checkbox.value);
+        remembered=null;rememberScope();if(pages[location.hash])load().catch(error=>{status.textContent=error.message;});
+      }
+    };
+    new MutationObserver(restore).observe(tenantSelect,{childList:true});new MutationObserver(restore).observe(subList,{childList:true});restore();
+  }
+
+  const homeSummary=document.createElement('section');homeSummary.className='panel';homeSummary.append(element('h2','Latest customer assessments'));
+  const homeResults=document.createElement('div');homeSummary.append(homeResults);document.getElementById('work-home')?.append(homeSummary);
+  async function updateHome(){if(location.hash&&location.hash!=='#work-home')return;homeResults.replaceChildren();const c=context();if(!c.tenant||!c.subscriptions.length){homeResults.append(element('p','Select a customer in Assessment Hub to see its latest saved runs.'));return;}
+    try{const data=await api({action:'list'});homeResults.append(element('p',customer()));for(const [key,label]of Object.entries(labels)){const job=data.jobs.find(item=>item.sections[key]);if(!job)continue;const section=job.sections[key];homeResults.append(element('p',`${label} · ${job.status} · ${new Date(section.captured_at).toLocaleString()}`));}const link=element('a','Open customer assessments');link.href='#hub';homeResults.append(link);}catch(error){homeResults.append(element('p',error.message));}}
+  window.addEventListener('hashchange',updateHome);setInterval(updateHome,30000);updateHome();
+
   const chat=document.createElement('details');
   chat.style.cssText='position:fixed;bottom:20px;right:20px;z-index:10000;background:#111c30;border:1px solid #43617c;border-radius:14px;padding:16px;max-width:460px;width:calc(100vw - 32px);box-shadow:0 12px 40px #0008';
   chat.append(element('summary','Cloud Command Center chat'));
