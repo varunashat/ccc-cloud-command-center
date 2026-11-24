@@ -601,6 +601,31 @@
       addBubble("user", text);
       queueEntry("user", text);
     }
+    let runPromise = null;
+    let jobReady = false;
+    let startContext = "";
+    const sayWaiters = [];
+    function threadContext() {
+      return [...log.children].map((b) => (b.style.alignSelf === "flex-end" ? "Operator: " : "Assistant: ") + b.textContent).join("\n").slice(-2500);
+    }
+    async function sayToRun(text) {
+      for (let i = 0; i < 40 && runPromise && !jobReady; i++) await new Promise((r) => setTimeout(r, 100));
+      if (!agentJob || !jobReady) return false;
+      const api = agentKind === "laptop" ? laptopApi : deployAgentApi;
+      const res = await api({ action: "say", id: agentJob, text });
+      if (!res.accepted) return false;
+      if (resumeUser) resumeUser();
+      for (const release of sayWaiters.splice(0)) release();
+      return true;
+    }
+    function startRun(runner, text) {
+      const promise = runner(text)
+        .catch((error) => logLine("Error: " + error.message))
+        .finally(() => {
+          if (runPromise === promise) runPromise = null;
+        });
+      runPromise = promise;
+    }
     async function openSaved(kind, id) {
       const chat = await fetch("/api/supervisor", {
         method: "POST",
@@ -704,11 +729,12 @@
     let stopRequested = false;
     let resumeUser = null;
     const stopButton = control(panel, "Stop", async () => {
+      if (stopRequested) return;
       stopRequested = true;
       if (agentJob) await (lastRunner === runLaptop ? laptopApi : deployAgentApi)({ action: "stop", id: agentJob });
       if (resumeUser) resumeUser();
       for (const release of stopWaiters.splice(0)) release();
-      logLine("Stopped by you.");
+      logLine("Stopped. Type a follow-up any time and I will continue from this conversation.");
     });
     stopButton.hidden = true;
     const continueButton = control(panel, "I'm done, continue", async () => {
@@ -815,11 +841,14 @@
       runBubble = null;
       agentKind = "browser";
       agentJob = null;
+      jobReady = false;
       const ping = await ext("ping", {}, 4000);
       if (!ping || !ping.ok || parseInt(ping.version, 10) < 2)
         throw new Error("Update the CCC browser extension to v2.0 first (see extension/README in the repo).");
       agentJob = crypto.randomUUID();
-      await deployAgentApi({ action: "start", id: agentJob, task, consent: true });
+      await deployAgentApi({ action: "start", id: agentJob, task, consent: true, context: startContext || threadContext() });
+      startContext = "";
+      jobReady = true;
       flushQueue();
       stopButton.hidden = false;
       logLine("Started. Opening the Azure portal in your browser...");
@@ -953,6 +982,7 @@
         }
         recovery.after(box);
         stopWaiters.push(() => { box.remove(); resolve("stop"); });
+        sayWaiters.push(() => { box.remove(); resolve("say"); });
       });
     }
     const stopWaiters = [];
@@ -974,10 +1004,13 @@
       runBubble = null;
       agentKind = "laptop";
       agentJob = null;
+      jobReady = false;
       await refreshExe();
       if (!exeInfo) throw new Error("Connect the laptop executor first (start it, enter the pairing code, press Connect).");
       agentJob = crypto.randomUUID();
-      await laptopApi({ action: "start", id: agentJob, task, consent: true });
+      await laptopApi({ action: "start", id: agentJob, task, consent: true, context: startContext || threadContext() });
+      startContext = "";
+      jobReady = true;
       flushQueue();
       stopButton.hidden = false;
       logLine("Checking identity on your laptop (read-only)...");
@@ -1005,6 +1038,7 @@
           if (out.needs_plan_approval) {
             showPlan(out);
             const choice = await waitFor([["Approve plan and run", "go"], ["Reject", "stop"]]);
+            if (choice === "say") continue;
             if (choice !== "go") { logLine("Plan rejected. Nothing was changed."); break; }
             approvePlan = true;
             logLine("Plan approved by you.");
@@ -1020,6 +1054,7 @@
             for (const held of out.held) logLine(`HELD for your approval: ${held.tool} ${held.args.join(" ")}  (${held.reason})`);
             const choice = await waitFor([["Approve these commands", "go"], ["Skip them", "skip"]]);
             if (choice === "stop") break;
+            if (choice === "say") continue;
             if (choice === "go") approveCommands = out.held.map((h) => h.key);
           }
           for (const command of out.commands) {
@@ -1090,17 +1125,15 @@
       const text = input.value.trim();
       if (!text) throw new Error("Describe what to deploy.");
       if (!consent.checked) throw new Error("Tick the Azure AI Foundry consent box first.");
+      const earlier = threadContext();
       userSays(text);
-      if (modes.laptop.checked) {
+      if (modes.laptop.checked || modes.browser.checked) {
         input.value = "";
         status.textContent = "";
-        await runLaptop(text);
-        return;
-      }
-      if (modes.browser.checked) {
-        input.value = "";
-        status.textContent = "";
-        await runAgent(text);
+        if (runPromise && !stopRequested && (await sayToRun(text))) return;
+        if (runPromise) await runPromise;
+        startContext = earlier;
+        startRun(modes.laptop.checked ? runLaptop : runAgent, text);
         return;
       }
       const mode = "cloud";
@@ -1115,8 +1148,39 @@
       paint(conv);
       await refreshHistory();
     });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+        event.preventDefault();
+        sendButton.click();
+      }
+    });
+    const voiceRow = document.createElement("div");
+    const voiceLang = document.createElement("select");
+    voiceLang.setAttribute("aria-label", "Voice language");
+    for (const [value, label] of [["en-IN", "English (India)"], ["hi-IN", "हिन्दी"], ["en-US", "English (US)"]]) voiceLang.add(new Option(label, value));
+    const mic = element("button", "Speak");
+    mic.type = "button";
+    let recognition = null;
+    mic.onclick = () => {
+      const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!Recognition) { status.textContent = "Voice input needs Chrome or Edge."; return; }
+      if (recognition) { recognition.stop(); return; }
+      recognition = new Recognition();
+      recognition.lang = voiceLang.value;
+      recognition.interimResults = true;
+      recognition.continuous = true;
+      const base = input.value ? input.value + " " : "";
+      recognition.onresult = (event) => {
+        input.value = base + [...event.results].map((r) => r[0].transcript).join(" ");
+      };
+      recognition.onerror = (event) => { status.textContent = "Voice input: " + event.error; };
+      recognition.onend = () => { recognition = null; mic.textContent = "Speak"; };
+      recognition.start();
+      mic.textContent = "Stop speaking";
+    };
+    voiceRow.append(mic, voiceLang, element("small", " Enter sends, Shift+Enter adds a line. You can type while it works."));
     // Buttons were created before the inputs; append everything in display order.
-    panel.append(exePanel, history, log, input, consentLabel, sendButton, stopButton, continueButton, checksButton, checksBox, recovery, planBox);
+    panel.append(exePanel, history, log, input, voiceRow, consentLabel, sendButton, stopButton, continueButton, checksButton, checksBox, recovery, planBox);
     content.append(panel);
     syncModePanels();
     refreshExe();

@@ -16,6 +16,7 @@ from playwright.sync_api import sync_playwright  # noqa: E402
 PAGE_PORT, EXE_PORT = 8803, 8765
 ORIGIN = f'http://localhost:{PAGE_PORT}'
 calls = {'n': 0}
+HOOK = []
 SCRIPT = [
     {'thought': 'check repo', 'commands': [{'tool': 'git', 'args': ['status', '--short', '--branch']}]},
     {'thought': 'plan', 'plan': {'summary': 'Stage files in the repo', 'target': {'repo': 'demo'}, 'steps': ['git add -A', 'git push (held)'], 'cost_items': []}},
@@ -26,6 +27,8 @@ SCRIPT = [
 
 
 def chat(messages, tokens):
+    if HOOK:
+        return HOOK[0](messages[-1]['content']), 'scripted'
     reply = SCRIPT[min(calls['n'], len(SCRIPT) - 1)]
     calls['n'] += 1
     return json.dumps(reply), 'scripted'
@@ -130,6 +133,28 @@ def main():
             body = page.inner_text('#assessment-workspace')
             assert 'Blocked: quota exceeded' in body and 'Trying a different approach automatically (1/2)' in body, body[-800:]
             print('automatic recovery worked')
+            # talk to a running job, then follow up after it finished
+            def steer(content):
+                inbox = content.split('NEW OPERATOR MESSAGES:')[1].split('PREVIOUS WORK')[0]
+                if 'right tenant' in inbox:
+                    return json.dumps({'thought': 'ok, switching to the right tenant', 'done': True, 'summary': 'acknowledged right tenant'})
+                return json.dumps({'thought': 'idle', 'commands': []})
+            HOOK[:] = [steer]
+            page.fill('textarea[aria-label="What should be deployed"]', 'Inspect the weather app')
+            page.click('button:has-text("Send")')
+            page.wait_for_selector('text=Checking identity', timeout=20000)
+            assert page.is_enabled('button:has-text("Send")'), 'Send must stay enabled while the assistant works'
+            page.fill('textarea[aria-label="What should be deployed"]', 'now its right tenant')
+            page.press('textarea[aria-label="What should be deployed"]', 'Enter')
+            page.wait_for_function("document.body.innerText.includes('Finished: acknowledged right tenant')", timeout=30000)
+            print('mid-run message was picked up')
+            seen = []
+            HOOK[:] = [lambda c: (seen.append(c) or json.dumps({'done': True, 'summary': 'follow-up done'}))]
+            page.fill('textarea[aria-label="What should be deployed"]', 'and check the cost again')
+            page.press('textarea[aria-label="What should be deployed"]', 'Enter')
+            page.wait_for_function("document.body.innerText.includes('Finished: follow-up done')", timeout=30000)
+            assert 'right tenant' in seen[0] and 'Inspect the weather app' in seen[0], seen[0][:600]
+            print('follow-up kept the conversation context')
             print('LAPTOP E2E PASSED')
             browser.close()
 

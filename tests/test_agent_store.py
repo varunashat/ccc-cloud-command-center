@@ -44,3 +44,25 @@ class AgentStoreTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class SteeringTest(unittest.TestCase):
+    def setUp(self):
+        self.t = tempfile.TemporaryDirectory(); self.addCleanup(self.t.cleanup)
+        p = patch.object(hub, 'ROOT', Path(self.t.name)); p.start(); self.addCleanup(p.stop)
+
+    def test_operator_can_talk_to_a_running_job_and_follow_up(self):
+        obs = {'url': 'https://portal.azure.com/', 'title': 't', 'text': '', 'elements': []}
+        for mod, kind in ((ba, 'browser'), (la, 'laptop')):
+            job = str(uuid4())
+            mod.dispatch('a@x', {'action': 'start', 'id': job, 'task': 'inspect weather app', 'consent': True, 'context': 'You: wrong tenant earlier'}, None)
+            self.assertTrue(mod.dispatch('a@x', {'action': 'say', 'id': job, 'text': 'now its right tenant'}, None)['accepted'])
+            seen = []
+            body = {'action': 'step', 'id': job, 'observation': obs}
+            mod.dispatch('a@x', body, lambda m, t: (seen.append(m[-1]['content']) or '{"actions":[],"commands":[]}', 'g'))
+            self.assertIn('now its right tenant', seen[0]); self.assertIn('wrong tenant earlier', seen[0])
+            seen.clear()
+            mod.dispatch('a@x', body, lambda m, t: (seen.append(m[-1]['content']) or '{"actions":[],"commands":[]}', 'g'))
+            self.assertIn('NEW OPERATOR MESSAGES: none', seen[0])  # delivered once
+            mod.dispatch('a@x', {'action': 'stop', 'id': job}, None)
+            self.assertFalse(mod.dispatch('a@x', {'action': 'say', 'id': job, 'text': 'hello'}, None)['accepted'])
