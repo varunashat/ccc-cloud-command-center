@@ -22,7 +22,7 @@
     ],
     "#hub-deployment": [
       "Environment & Deployment",
-      "Prepare a private deployment plan for the selected subscription.",
+      "Describe what to deploy in chat. AI Foundry plans it, and can operate your laptop browser.",
     ],
   };
   const labels = {
@@ -288,9 +288,45 @@
       parent.append(details);
     }
     table(parent, section.rows);
-    if (section.csv)
-      download(parent, section.workflow + ".csv", section.csv, "text/csv");
-    download(parent, section.workflow + ".json", section);
+    pdfControls(parent, section.workflow);
+  }
+  function pdfControls(parent, workflow) {
+    const wrap = document.createElement("div");
+    const label = document.createElement("label");
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = true;
+    label.append(
+      box,
+      document.createTextNode(
+        " Validate and write findings with my Azure AI Foundry model (billable; sends computed summary data, no credentials)",
+      ),
+    );
+    wrap.append(label);
+    control(
+      wrap,
+      workflow ? "Download PDF report" : "Download full PDF report",
+      async () => {
+        if (!shownJob) throw new Error("Open a saved run first.");
+        status.textContent = "Building report. AI validation can take a minute...";
+        const out = await api({
+          action: "report",
+          id: shownJob.id,
+          workflow,
+          validate: box.checked,
+          consent: box.checked,
+        });
+        const bytes = Uint8Array.from(atob(out.pdf_base64), (c) => c.charCodeAt(0));
+        const a = document.createElement("a");
+        const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+        a.href = url;
+        a.download = out.filename;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        status.textContent = "Report downloaded.";
+      },
+    );
+    parent.append(wrap);
   }
   function renderJobs(parent, workflow) {
     const relevant = currentJobs.filter(
@@ -327,6 +363,54 @@
       parent.append(row);
     });
   }
+  let overviewData = null;
+  async function loadOverview() {
+    overviewData = await api({ action: "overview" });
+    if (location.hash === "#hub") render();
+  }
+  function dashboard(parent) {
+    const panel = document.createElement("section");
+    panel.className = "panel";
+    panel.append(element("h2", "Customer assessment dashboard"));
+    if (!overviewData) {
+      panel.append(element("p", "Loading saved assessments..."));
+      parent.append(panel);
+      return;
+    }
+    const t = overviewData.totals;
+    const tiles = document.createElement("div");
+    tiles.className = "hub-cards";
+    for (const [name, value] of [
+      ["Customers assessed", t.customers],
+      ["Assessment runs", t.runs],
+      ["Completed", t.completed],
+      ["Open / needs action", t.open],
+    ]) {
+      const tile = document.createElement("div");
+      tile.append(element("small", name), element("h2", String(value)));
+      tiles.append(tile);
+    }
+    panel.append(tiles);
+    if (!overviewData.customers.length) {
+      panel.append(
+        element("p", "No assessments yet. Select a customer above and run an assessment; each customer you assess is added here."),
+      );
+    } else {
+      const rows = overviewData.customers.map((c) => ({
+        Customer: c.customer,
+        Runs: c.runs,
+        "Last run": new Date(c.latest).toLocaleString(),
+        "Last status": c.latest_status,
+        Infrastructure: c.done.infrastructure ?? "-",
+        Security: c.done.security ?? "-",
+        Cost: c.done.cost ?? "-",
+        Modernization: c.done.modernization ?? "-",
+      }));
+      table(panel, rows);
+      panel.append(element("small", "Assessment columns show records collected in the customer's latest saved result. - means not run yet."));
+    }
+    parent.append(panel);
+  }
   function render() {
     content.replaceChildren();
     const hash = location.hash;
@@ -340,6 +424,7 @@
         start([workflow]),
       );
     } else {
+      dashboard(content);
       const cards = document.createElement("div");
       cards.className = "hub-cards";
       for (const [key, label] of Object.entries(labels)) {
@@ -380,6 +465,8 @@
       );
       if (shownJob.pending)
         output.append(element("p", shownJob.pending.message));
+      if (!workflow && Object.keys(shownJob.sections).length > 1)
+        pdfControls(output, undefined);
       for (const [key, section] of Object.entries(shownJob.sections)) {
         if (!workflow || key === workflow) showSection(output, section);
       }
@@ -405,77 +492,157 @@
     status.textContent = "";
     render();
   }
+  async function deployApi(body) {
+    const c = context();
+    const scope = c.tenant && c.subscriptions.length ? c : {};
+    const response = await fetch("/api/supervisor", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Local-Token": token },
+      body: JSON.stringify({ channel: "deploy-chat", ...scope, ...body }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Deployment request failed.");
+    return data;
+  }
   function deploymentPage() {
     const panel = document.createElement("section");
     panel.className = "panel";
     panel.append(
-      element("h2", "Private Linux VM plan"),
+      element("h2", "Deploy with AI Foundry"),
       element(
         "p",
-        "Prepare an ARM template with an existing private subnet. The generated draft lists pricing, quota, policy and pairing checks still required before execution.",
+        "Describe what to deploy in your own words: virtual machines, containers, App Service, Azure Firewall, networking, storage or a whole environment. Azure AI Foundry plans it with you. Nothing runs until you approve.",
       ),
     );
-    const fields = {};
-    for (const [key, label] of Object.entries({
-      group: "Resource group",
-      region: "Azure region",
-      names: "VM names, separated by commas",
-      size: "VM size",
-      vnet: "Existing virtual network",
-      subnet: "Existing subnet",
-      image_version: "Pinned Ubuntu 24.04 image version",
-    })) {
-      const labelNode = element("label", label);
-      const input = document.createElement("input");
-      labelNode.append(input);
-      panel.append(labelNode);
-      fields[key] = input;
+    const modeRow = document.createElement("div");
+    const modes = {};
+    for (const [value, text] of [
+      ["cloud", "Plan in the cloud (AI Foundry drafts resources, CLI steps and checks)"],
+      ["laptop", "Control my laptop browser (AI Foundry writes portal steps; the laptop agent performs them in my Edge/Chrome)"],
+    ]) {
+      const label = document.createElement("label");
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "deploy-mode";
+      radio.value = value;
+      radio.checked = value === "cloud";
+      label.append(radio, document.createTextNode(" " + text));
+      modeRow.append(label);
+      modes[value] = radio;
     }
-    const out = document.createElement("div");
-    control(panel, "Prepare plan", async () => {
-      const c = ready();
-      const plan = Object.fromEntries(
-        Object.entries(fields).map(([key, input]) => [key, input.value.trim()]),
-      );
-      plan.names = plan.names.split(",").map((name) => name.trim());
-      const response = await fetch("/api/supervisor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Local-Token": token },
-        body: JSON.stringify({ action: "live-plan", ...c, plan }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-      out.replaceChildren(
-        element(
-          "p",
-          "Draft prepared. Complete the pending verification before approval.",
-        ),
-      );
-      table(
-        out,
-        data.vm_names.map((name) => ({
-          name,
-          region: data.region,
-          size: data.size,
-          subscription: data.subscription,
-        })),
-      );
-      data.pending.forEach((text) => out.append(element("p", text)));
-      download(out, "deployment-plan.json", data);
-      download(out, "azuredeploy.json", data.arm_template);
-    });
-    panel.append(out);
-    content.append(panel);
-    const paired = element("section", "");
-    paired.className = "panel";
-    paired.append(
-      element("h2", "Laptop execution"),
-      element(
-        "p",
-        "Azure Portal deployment pairing is awaiting implementation. The installed DMS helper provides file search. Deployment execution requires its own approved-plan and device checks.",
-      ),
+    panel.append(modeRow);
+    const history = document.createElement("select");
+    history.setAttribute("aria-label", "Deployment chat history");
+    const log = document.createElement("div");
+    const planBox = document.createElement("div");
+    const input = document.createElement("textarea");
+    input.rows = 4;
+    input.style.width = "100%";
+    input.setAttribute("aria-label", "What should be deployed");
+    input.placeholder =
+      "e.g. Create a hub VNet in UAE North with Azure Firewall Premium, two Windows Server 2022 VMs in a spoke, and a Log Analytics workspace. Open my Azure portal and set it up.";
+    const consent = document.createElement("input");
+    consent.type = "checkbox";
+    const consentLabel = document.createElement("label");
+    consentLabel.append(
+      consent,
+      document.createTextNode(" Use my Azure AI Foundry model (billable; your messages and the selected customer scope are sent to your Azure resource, never credentials)"),
     );
-    content.append(paired);
+    let current = null;
+    const chatTitle = (c) => c.title + " · " + c.mode;
+    function paint(conv) {
+      current = conv;
+      log.replaceChildren();
+      for (const m of conv.messages) {
+        const who = m.role === "user" ? "You" : "AI Foundry";
+        let text = m.content;
+        if (m.role === "assistant") {
+          try {
+            const p = JSON.parse(text.match(/\{[\s\S]*\}/)[0]);
+            text = [p.reply, ...(p.questions || []).map((q) => "? " + q)].filter(Boolean).join("\n");
+          } catch (_) {}
+        }
+        const row = element("p", "");
+        row.append(element("strong", who + ": "), document.createTextNode(text));
+        row.style.whiteSpace = "pre-wrap";
+        log.append(row);
+      }
+      planBox.replaceChildren();
+      const plan = conv.plan;
+      if (!plan) return;
+      planBox.append(element("h3", "Plan: " + plan.title), element("p", plan.summary));
+      if (plan.resources.length) table(planBox, plan.resources);
+      for (const [key, title] of [
+        ["checks_before_run", "Checks before running"],
+        ["cli_steps", "Azure CLI steps"],
+        ["portal_steps", "Azure portal steps (laptop agent)"],
+        ["estimated_risks", "Risks"],
+      ]) {
+        if (!plan[key].length) continue;
+        planBox.append(element("h3", title));
+        const list = document.createElement("ol");
+        plan[key].forEach((x) => list.append(element("li", x)));
+        planBox.append(list);
+      }
+      if (conv.mode === "laptop" && plan.portal_steps.length) {
+        control(planBox, "Download laptop task", async () => {
+          const task = await deployApi({ action: "laptop-task", id: conv.id });
+          const a = document.createElement("a");
+          const url = URL.createObjectURL(new Blob([JSON.stringify(task, null, 2)], { type: "application/json" }));
+          a.href = url;
+          a.download = "ccc-deploy-task.json";
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        });
+        planBox.append(
+          element(
+            "p",
+            "Run on your laptop: python laptop/portal_agent.py ccc-deploy-task.json. It opens your Edge, you sign in to the Azure portal yourself, and AI Foundry operates the portal. It asks you before every Create, Delete or Save.",
+          ),
+        );
+      }
+    }
+    async function refreshHistory() {
+      const out = await deployApi({ action: "list" });
+      history.replaceChildren(new Option("New chat", ""));
+      out.conversations.forEach((c) => history.add(new Option(chatTitle(c), c.id)));
+      if (current) history.value = current.id;
+    }
+    history.onchange = async () => {
+      if (!history.value) {
+        current = null;
+        log.replaceChildren();
+        planBox.replaceChildren();
+        return;
+      }
+      const conv = await deployApi({ action: "open", id: history.value });
+      modes[conv.mode].checked = true;
+      paint(conv);
+    };
+    control(panel, "Send", async () => {
+      const text = input.value.trim();
+      if (!text) throw new Error("Describe what to deploy.");
+      if (!consent.checked) throw new Error("Tick the Azure AI Foundry consent box first.");
+      const mode = modes.laptop.checked ? "laptop" : "cloud";
+      if (!current) {
+        const id = crypto.randomUUID();
+        paint(await deployApi({ action: "new", id, mode }));
+      }
+      status.textContent = "AI Foundry is planning...";
+      const conv = await deployApi({ action: "message", id: current.id, message: text, consent: true });
+      input.value = "";
+      status.textContent = "";
+      paint(conv);
+      await refreshHistory();
+    });
+    panel.append(history, log, input, consentLabel);
+    // Send button was created before the inputs were appended; move it after the consent box.
+    panel.append(panel.querySelector("button"));
+    panel.append(planBox);
+    content.append(panel);
+    refreshHistory().catch((error) => {
+      status.textContent = error.message;
+    });
   }
   function navigate() {
     generation++;
@@ -494,6 +661,10 @@
     shownJob = null;
     currentJobs = [];
     render();
+    if (location.hash === "#hub")
+      loadOverview().catch((error) => {
+        status.textContent = error.message;
+      });
     load().catch((error) => {
       status.textContent = error.message;
     });
@@ -506,8 +677,10 @@
     );
   }
   const nav = document.querySelector("nav.workspace-nav");
-  for (const [hash, page] of Object.entries(pages)) {
-    const a = element("a", page[0]);
+  // Separate Infrastructure/Security/Cost/Modernization links are not shown in the sidebar:
+  // the Assessment Hub is the single entry point and its cards open each assessment.
+  for (const hash of ["#hub", "#hub-deployment"]) {
+    const a = element("a", pages[hash][0]);
     a.href = hash;
     nav?.append(a);
   }

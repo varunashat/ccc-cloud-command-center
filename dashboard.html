@@ -230,7 +230,7 @@ $('add').onclick=async()=>{await run('customer',{name:$('name').value});await cu
 if (window.CCC_SERVER && !document.getElementById('work-home')) {
   const areas = [
     ['home', 'Home'],
-    ['assessment', 'Azure Assessment'],
+    ['assessment', 'Client Inventory'],
     ['pricing', 'Pricing Calculator & BOQ'],
     ['foundry', 'AI Foundry'],
     ['dms', 'DMS Search'],
@@ -260,7 +260,7 @@ if (window.CCC_SERVER && !document.getElementById('work-home')) {
   document.querySelector('.hero').hidden = true;
   const move = (area, id) => views.get(area).append($(id));
   move('assessment', 'discpanel');
-  move('assessment', 'cards');
+  $('cards').style.display = 'none'; /* workflow tiles removed: Client Inventory page keeps only the customer inventory panel */
   move('pricing', 'estimator');
   move('pricing', 'calcagent');
   views.get('pricing').append($('calculator-results').parentElement);
@@ -294,7 +294,7 @@ if (window.CCC_SERVER && !document.getElementById('work-home')) {
   panel('jobs', 'Background jobs and CIO review', 'Durable execution and review are pending. Existing workflow evidence is available above.');
   panel('settings', 'Microsoft account', 'Signed in as ' + window.CCC_SERVER.user);
   panel('settings', 'Azure AI Foundry', 'Use the AI Foundry area for the existing advisory workflow.');
-  panel('settings', 'Customer context', 'The customer selector labels workflow evidence. Select the Azure directory and subscriptions separately in Azure Assessment.');
+  panel('settings', 'Customer context', 'The customer selector labels workflow evidence. Select the Azure directory and subscriptions in Client Inventory.');
   const show = () => {
     const requested = location.hash.replace(/^#work-/, '');
     const active = views.has(requested) ? requested : 'home';
@@ -1003,15 +1003,15 @@ var P=['#22d3ee','#3b82f6','#8b5cf6','#2dd4bf','#f5a524','#f43f5e','#22c55e','#e
 var I={home:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',assess:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6M11 8v6"/>',price:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M8 18h8"/>',ai:'<path d="M12 3l2.2 5.3L20 10l-5.8 1.7L12 17l-2.2-5.3L4 10l5.8-1.7z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/>',dms:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M9 14h6M9 17h4"/>',prop:'<path d="M4 4h16v12H5.2L4 17.2z"/><path d="M8 8h8M8 12h5"/>',jobs:'<path d="M3 12h4l3 8 4-16 3 8h4"/>',set:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',tam:'<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>'};
 function ic(k){return'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(I[k]||'')+'</svg>'}
 var PAGES={'work-home':{k:'home',g:'Overview',t:'Command Overview',e:'Executive overview',d:'Live view of your Azure assessments, bills, calculator coverage and the TAM business in one place.'},
-'work-assessment':{k:'assess',g:'Assess & price',t:'Azure Assessment',e:'Discovery \u00b7 Cost Management \u00b7 Pricing Calculator',d:"Read-only discovery of a client's Azure estate and real bill, turned into an apple-to-apple Azure Pricing Calculator link and BOQ. No AI tokens."},
+'work-assessment':{k:'assess',g:'Assess & price',t:'Client Inventory',e:'Discovery \u00b7 Cost Management \u00b7 Pricing Calculator',d:"Read-only discovery of a client's Azure estate and real bill, turned into an apple-to-apple Azure Pricing Calculator link and BOQ. No AI tokens."},
 'work-pricing':{k:'price',g:'Assess & price',t:'Pricing Calculator & BOQ',e:'Estimator \u00b7 Azure Retail Prices',d:'Price a BOQ, RVTools or Azure Migrate file, or a written requirement, with official Azure prices: pay-as-you-go, reserved, savings plan and Azure Hybrid Benefit.'},
 'work-foundry':{k:'ai',g:'AI & documents',t:'AI Foundry',e:'Azure AI Foundry \u00b7 gpt-6.1-sol',d:'Chat with your Azure AI Foundry model. The app tools fetch official prices, build BOQs and read your estate.'},
 'work-dms':{k:'dms',g:'AI & documents',t:'DMS Search',e:'Documents',d:'Search proposals, SOWs and supporting documents.'},
 'work-proposal':{k:'prop',g:'AI & documents',t:'Noventiq Proposal Studio',e:'Proposals \u00b7 Seven Seas template',d:'Turn emails, BOQs and project details into a Seven Seas / Noventiq Word proposal with the corporate Scope of Work template.'},
 'work-jobs':{k:'jobs',g:'Operations',t:'Jobs & CIO Review',e:'Operations',d:'Every discovery, calculator and estimate run, with status and evidence for review.'},
 'work-settings':{k:'set',g:'Operations',t:'Connections & Settings',e:'Configuration',d:'Azure sign-in, calculator sign-in, AI Foundry connection and app settings.'}};
-var NAVK={'Home':'home','Azure Assessment':'assess','Pricing Calculator & BOQ':'price','AI Foundry':'ai','DMS Search':'dms','Noventiq Proposal Studio':'prop','Jobs & CIO Review':'jobs','Connections & Settings':'set','TAM Dashboard':'tam'};
-var GRP={'Home':'Overview','Azure Assessment':'Assess & price','AI Foundry':'AI & documents','Jobs & CIO Review':'Operations','TAM Dashboard':'Business'};
+var NAVK={'Home':'home','Client Inventory':'assess','Pricing Calculator & BOQ':'price','AI Foundry':'ai','DMS Search':'dms','Noventiq Proposal Studio':'prop','Jobs & CIO Review':'jobs','Connections & Settings':'set','TAM Dashboard':'tam'};
+var GRP={'Home':'Overview','Client Inventory':'Assess & price','AI Foundry':'AI & documents','Jobs & CIO Review':'Operations','TAM Dashboard':'Business'};
 var ST=null,TAM={},tip;
 function shell(){var a=$('aside.hosted-sidebar');if(!a||a.dataset.ccc)return;a.dataset.ccc=1;
  var b=$('.brand',a);if(b)b.innerHTML='<span class="ccc-logo"><svg viewBox="0 0 24 24" fill="none" stroke="#04111f" stroke-width="2.4" stroke-linecap="round"><path d="M4 15a5 5 0 0 1 4-7.9A6 6 0 0 1 19.5 9 4 4 0 0 1 19 17H7"/><path d="M9 13l2 2 4-4"/></svg></span><span class="ccc-bt"><b>Cloud Command Center</b><small>Noventiq \u00b7 Seven Seas</small></span>';

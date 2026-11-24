@@ -64,6 +64,30 @@ def result(path):
             'pending': read(path / 'blocked.json') if (path / 'blocked.json').exists() else None}
 
 
+def overview(owner):
+    """Every saved run of this operator across customers, for the Hub dashboard. Reads only the operator's own folder."""
+    runs = []
+    for request in folder(owner).glob('*/request.json'):
+        job = result(request.parent)
+        runs.append({'id': job['id'], 'customer': job['customer'], 'tenant': job['scope']['tenant'],
+                     'subscriptions': len(job['scope']['subscriptions']), 'created': job['created'], 'status': job['status'],
+                     'workflows': job['workflows'],
+                     'sections': {k: {'status': v['status'], 'rows': len(v['rows']), 'gaps': len(v.get('gaps') or [])}
+                                  for k, v in job['sections'].items()}})
+    runs.sort(key=lambda r: r['created'], reverse=True)
+    customers = {}
+    for run in runs:
+        c = customers.setdefault(run['tenant'], {'customer': run['customer'], 'tenant': run['tenant'], 'runs': 0, 'latest': run['created'],
+                                                 'latest_status': run['status'], 'done': {}})
+        c['runs'] += 1
+        for key, section in run['sections'].items():
+            c['done'].setdefault(key, section['rows'])
+    return {'runs': runs[:200], 'customers': sorted(customers.values(), key=lambda c: c['latest'], reverse=True),
+            'totals': {'customers': len(customers), 'runs': len(runs),
+                       'completed': sum(1 for r in runs if r['status'].startswith('Completed')),
+                       'open': sum(1 for r in runs if r['status'] in ('Queued', 'In progress', 'Needs sign-in', 'Paused'))}}
+
+
 def dispatch(owner, body, call):
     selected = scope(body)
     authorized(selected, call)

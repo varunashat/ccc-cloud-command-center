@@ -45,3 +45,11 @@ Production rollout verified on revision 0000030. Azure reports it ready and heal
 After the operator completed Microsoft verification, a user-initiated HIPA assessment run completed through the scheduled Azure worker. The browser displayed all four saved sections. Its downloaded infrastructure CSV was checked and contained 56 rows, all within the selected tenant and two subscriptions. This verifies the unattended customer assessment path for HIPA. The previously selected SHJ tenant requires its own successful cloud sign-in before its queued acceptance can be verified.
 
 Final rollout is revision 0000032, image sha256:1e0073558f15b81ce9e91aa65d86a504e9ea43e4fbf59e2a7faa1b2b84ddc665 from build dg1m. The application health endpoint and Azure ready state passed. Recent scheduled worker executions succeeded. Live Foundry chat correctly reported the completed HIPA job and its four saved workflow names after job status was added to model evidence. The final UI guards late responses when conversations or customer scope change.
+
+## 24 November 2026: Client Inventory, Hub dashboard, PDF reports, deployment chat (branch feature/client-inventory-hub-pdf-deploy-chat)
+
+- Home area renamed Client Inventory; the eight workflow tiles are hidden there.
+- Assessment Hub: sidebar lists only Assessment Hub and Environment & Deployment; per-assessment links stay as cards. New customer dashboard (all customers/runs of the signed-in operator).
+- Results export is a PDF (`hub_report.py`): computed metrics, Foundry-written findings validated against saved resource IDs, evidence gaps, appendix. CSV/JSON buttons removed.
+- Environment & Deployment: the VM/region form is replaced by a Foundry planning chat (cloud mode) and a laptop mode that exports a task for `laptop/portal_agent.py`.
+- Verified: unit tests (report, deploy chat, overview, laptop guards). NOT verified: rendering in a browser, a live Foundry call, the laptop agent against the real Azure portal, the container build with reportlab.

@@ -23,6 +23,8 @@ import tam_proxy
 import supervisor
 import hub_jobs
 import hub_chat
+import hub_report
+import deploy_chat
 import live_workflow
 import weather_console
 
@@ -383,11 +385,37 @@ class Handler(app.Handler):
                         return self.send(400, {'error': str(error)})
                 if payload.get('channel') == 'assessment-hub':
                     who = current_user()
+                    if payload.get('action') == 'overview':
+                        return self.send(200, hub_jobs.overview(who))
                     caller = hub_jobs.azure.make_caller(lambda tenant: user_token(who, tenant), retries=0, timeout=20)
+                    if payload.get('action') == 'report':
+                        job = hub_jobs.dispatch(who, {**payload, 'action': 'status'}, caller)
+                        only = payload.get('workflow')
+                        if only is not None and only not in hub_jobs.WORKFLOWS:
+                            raise ValueError('Choose a supported assessment.')
+                        try:
+                            pdf = hub_report.build(job, [only] if only else None,
+                                                   ai=ai_assist.chat if payload.get('validate') is True and payload.get('consent') is True else None)
+                        except ValueError:
+                            raise
+                        name = 'assessment-report-' + (only or 'all') + '-' + job['id'][:8] + '.pdf'
+                        return self.send(200, {'filename': name, 'pdf_base64': base64.b64encode(pdf).decode('ascii')})
                     answer = hub_jobs.dispatch(who, payload, caller)
-                    for section in answer.get('sections', {}).values():
-                        section['csv'] = hub_jobs.export_csv(section)
                     return self.send(200, answer)
+                if payload.get('channel') == 'deploy-chat':
+                    who = current_user()
+                    try:
+                        scope = None
+                        if payload.get('tenant') and payload.get('subscriptions'):
+                            caller = hub_jobs.azure.make_caller(lambda tenant: user_token(who, tenant), retries=0, timeout=20)
+                            scope = hub_jobs.scope(payload)
+                            hub_jobs.authorized(scope, caller)
+                        answer = deploy_chat.dispatch(who, payload, ai_assist.chat, scope)
+                        if payload.get('action') == 'laptop-task':
+                            return self.send(200, deploy_chat.laptop_task(answer))
+                        return self.send(200, answer)
+                    except LookupError:
+                        return self.send(400, {'error': 'Azure AI Foundry is not configured for this app.'})
                 if payload.get('action') == 'weather':
                     try:
                         return self.send(200, weather_console.forecast(payload))
