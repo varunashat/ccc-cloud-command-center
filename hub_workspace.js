@@ -1113,7 +1113,7 @@
       await refreshExe();
       const todo = [
         ["az account show on laptop", () => exe("/run", { tool: "az", args: ["account", "show", "--query", "{name:name,tenant:tenantId,user:user.name}", "-o", "json"] }, 60000)],
-        ["Read-only Azure query on laptop", () => exe("/run", { tool: "az", args: ["group", "list", "--query", "length(@)", "-o", "tsv"] }, 60000)],
+        ["Read-only Azure query on laptop", () => exe("/run", { tool: "az", args: ["group", "list", "--only-show-errors", "--query", "[].name", "-o", "tsv"] }, 60000)],
         ["Read a selected local project file", async () => {
           const folder = exeInfo && exeInfo.folders[0];
           if (!folder) return { error: "no folder selected: start the executor with --folder" };
@@ -1127,7 +1127,9 @@
         if (!exeInfo) { add(name, "NOT CONFIGURED", "start the laptop executor and press Connect"); continue; }
         try {
           const r = await fn();
-          add(name, r.exit === 0 ? "PASS" : (r.ran === false || /not installed|no folder|not signed|Please run/i.test((r.error || "") + (r.stderr || "")) ? "NOT CONFIGURED" : "FAIL"), (r.stdout || r.stderr || r.error || "").trim().replace(/\s+/g, " ").slice(0, 160));
+          const state = r.exit === 0 ? "PASS" : (r.ran === false || /not installed|no folder|not signed|Please run/i.test((r.error || "") + (r.stderr || "")) ? "NOT CONFIGURED" : "FAIL");
+          const text = ((state === "PASS" ? r.stdout : (r.stderr || r.error || r.stdout)) || "").trim().replace(/\s+/g, " ");
+          add(name, state, state === "PASS" ? (name.startsWith("Read-only Azure query") ? text.split(" ").filter(Boolean).length + " resource groups visible" : text.slice(0, 160)) : text.slice(-300));
         } catch (error) { add(name, "FAIL", error.message); }
       }
       checksBox.textContent = rows.join("\n");
