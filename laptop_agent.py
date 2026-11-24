@@ -25,6 +25,7 @@ PRICES = 'https://prices.azure.com/api/retail/prices'
 
 SYSTEM = """You are a careful Azure and GitHub engineer working through the operator's own laptop to complete the TASK. Reply with ONLY one JSON object.
 Tools you may request: az, git, gh, pwsh (PowerShell). Also {"read":"<path>"} to read a file inside the operator's selected folders.
+Work like a senior engineer who takes ONE request and carries it through: first list every goal in the request (the TASK plus the CONVERSATION), then discover, then give ONE PLAN that covers all of them end to end (including any directory/subscription switch as a numbered step written as the exact az command), get it approved once, then execute every step and verify. Do not split the request into separate questions or separate approvals.
 Phases:
 1. DISCOVER (read-only): confirm identity and target first. Use: az account show, az group list, az ... show/list, git status, gh api user, reading files.
    {"thought":"..","commands":[{"tool":"az","args":["account","show"]}],"reads":[]}
@@ -63,7 +64,7 @@ def key(command):
     return hashlib.sha1(json.dumps([command['tool'], command['args']]).encode()).hexdigest()[:12]
 
 
-def vet(commands, plan_approved, approved):
+def vet(commands, plan_approved, approved, plan=None):
     """-> (runnable, held, refused). runnable commands carry their class; held need approval of that exact command."""
     run, held, refused = [], [], []
     for command in commands:
@@ -81,7 +82,10 @@ def vet(commands, plan_approved, approved):
         elif kind == 'write':
             (run if plan_approved else held).append({**item, 'reason': reason} if not plan_approved else item)
         else:
-            (run if item['key'] in approved else held).append({**item, 'reason': reason})
+            # A scope switch (az account set) that the operator-approved plan spells out is part of that approval.
+            in_plan = (plan_approved and reason == 'changes scope' and isinstance(args, list)
+                       and ' '.join(map(str, args)).lower() in json.dumps((plan or {}).get('steps', [])).lower())
+            (run if item['key'] in approved or in_plan else held).append(item if (item['key'] in approved or in_plan) else {**item, 'reason': reason})
     return run, held, refused
 
 
@@ -190,7 +194,7 @@ def dispatch(owner, body, chat, fetch=None):
     reply = _parse(answer)
     with LOCK:
         job = read(path)
-        run, held, refused = vet(reply['commands'], job['plan_approved'], set(job['approved']))
+        run, held, refused = vet(reply['commands'], job['plan_approved'], set(job['approved']), job.get('plan'))
         notes = [f"refused {c['tool']} {' '.join(map(str, c['args'] or []))[:80]}: {c['reason']}" for c in refused]
         repeated = [c for c in run if job['failures'].get(c['key'], 0) >= 3]
         if repeated:

@@ -64,3 +64,21 @@ class LaptopAgentTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class PlanScopeTest(unittest.TestCase):
+    def test_scope_switch_in_approved_plan_runs(self):
+        plan = {'steps': ['Run az account set --subscription 03a0c620', 'Verify']}
+        cmd = [{'tool': 'az', 'args': ['account', 'set', '--subscription', '03a0c620']}]
+        run, held, _ = la.vet(cmd, True, set(), plan)
+        self.assertEqual((len(run), len(held)), (1, 0))
+
+    def test_scope_switch_not_in_plan_is_held(self):
+        cmd = [{'tool': 'az', 'args': ['account', 'set', '--subscription', 'other']}]
+        run, held, _ = la.vet(cmd, True, set(), {'steps': ['list groups']})
+        self.assertEqual((len(run), len(held)), (0, 1))
+
+    def test_delete_stays_held_even_if_in_plan(self):
+        plan = {'steps': ['az group delete -n x']}
+        run, held, _ = la.vet([{'tool': 'az', 'args': ['group', 'delete', '-n', 'x']}], True, set(), plan)
+        self.assertEqual((len(run), len(held)), (0, 1))
