@@ -39,3 +39,5 @@ The production cloud session for the SHJ tenant could not obtain an ARM token. T
 | Comprehensive PDF/Excel exports and acceptance matrix | Pending |
 
 The deployed weather agent in del_test passed its separate forecast test through the local runner. That verifies the weather case. The full A-to-Z specification remains in progress.
+
+Production rollout verified on revision 0000030. Azure reports it ready and healthy with all traffic. The browser confirmed distinct assessment routes, shared scope controls, deployment plan inputs and shared chat. The synthetic start buttons have been removed. Customer-directory load concurrency was corrected. The SHJ Microsoft verification flow was opened for the operator, and authenticated SHJ background acceptance remains pending. Registry build dg1j pins image digest sha256:d59ab379d55dd1248c737a61dead90e9aca49a77ae149f6966681d65b41e9e83. The worker uses the same assessment implementation with encrypted-cache access and a 300-second execution limit.
