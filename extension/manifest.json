@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "Cloud Command Center \u2013 Calculator auto-fill + Browser agent",
+  "version": "2.0.0",
+  "description": "Calculator auto-fill, and lets Cloud Command Center operate your Azure portal tab on your instruction (AI Foundry decides, this extension clicks and types).",
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://cloud-command-center.icyhill-ea3b0d83.uaenorth.azurecontainerapps.io/*",
+    "https://azure.microsoft.com/*",
+    "https://portal.azure.com/*",
+    "https://ms.portal.azure.com/*",
+    "https://login.microsoftonline.com/*",
+    "https://*.azure.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://cloud-command-center.icyhill-ea3b0d83.uaenorth.azurecontainerapps.io/*"
+      ],
+      "js": [
+        "ccc_page.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://cloud-command-center.icyhill-ea3b0d83.uaenorth.azurecontainerapps.io/*"
+      ],
+      "js": [
+        "ccc_bridge.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://azure.microsoft.com/*/pricing/calculator*",
+        "https://azure.microsoft.com/pricing/calculator*"
+      ],
+      "js": [
+        "calculator.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

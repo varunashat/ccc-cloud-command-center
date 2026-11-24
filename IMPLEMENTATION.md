@@ -53,3 +53,10 @@ Final rollout is revision 0000032, image sha256:1e0073558f15b81ce9e91aa65d86a504
 - Results export is a PDF (`hub_report.py`): computed metrics, Foundry-written findings validated against saved resource IDs, evidence gaps, appendix. CSV/JSON buttons removed.
 - Environment & Deployment: the VM/region form is replaced by a Foundry planning chat (cloud mode) and a laptop mode that exports a task for `laptop/portal_agent.py`.
 - Verified: unit tests (report, deploy chat, overview, laptop guards). NOT verified: rendering in a browser, a live Foundry call, the laptop agent against the real Azure portal, the container build with reportlab.
+
+## Browser agent (Environment & Deployment chat)
+- Page (hub_workspace.js `runAgent`) runs the loop: extension `observe` -> `/api/supervisor` channel `browser-agent` `step` -> extension `act`.
+- Server (browser_agent.py) asks AI Foundry for up to 6 actions, vets them (host allowlist, secret fields refused, step cap 250, stop flag).
+- Extension (extension/agent_bg.js, ccc_bridge.js) observes/acts across frames in one tab.
+- Test: `python tests/e2e/run_extension_e2e.py` (headless Chrome, local fake portal with an iframe; needs playwright + google-chrome).
+- Not yet exercised against the real Azure portal; portal widgets (custom comboboxes) may need follow-up tuning.

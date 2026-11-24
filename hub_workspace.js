@@ -511,21 +511,21 @@
       element("h2", "Deploy with AI Foundry"),
       element(
         "p",
-        "Describe what to deploy in your own words: virtual machines, containers, App Service, Azure Firewall, networking, storage or a whole environment. Azure AI Foundry plans it with you. Nothing runs until you approve.",
+        "Describe what to deploy in your own words, the way you would tell Claude: virtual machines, containers, App Service, Azure Firewall, networking, storage or a whole environment. In browser mode AI Foundry then does it end to end in your own signed-in Azure portal tab, step by step, and reports back here. You stay in control with Stop. Passwords and MFA are always entered by you.",
       ),
     );
     const modeRow = document.createElement("div");
     const modes = {};
     for (const [value, text] of [
-      ["cloud", "Plan in the cloud (AI Foundry drafts resources, CLI steps and checks)"],
-      ["laptop", "Control my laptop browser (AI Foundry writes portal steps; the laptop agent performs them in my Edge/Chrome)"],
+      ["browser", "Deploy through my browser, fully automatic (AI Foundry operates my signed-in Azure portal tab via the CCC extension)"],
+      ["cloud", "Plan only (AI Foundry drafts resources, CLI steps and checks; nothing runs)"],
     ]) {
       const label = document.createElement("label");
       const radio = document.createElement("input");
       radio.type = "radio";
       radio.name = "deploy-mode";
       radio.value = value;
-      radio.checked = value === "cloud";
+      radio.checked = value === "browser";
       label.append(radio, document.createTextNode(" " + text));
       modeRow.append(label);
       modes[value] = radio;
@@ -616,14 +616,117 @@
         return;
       }
       const conv = await deployApi({ action: "open", id: history.value });
-      modes[conv.mode].checked = true;
+      if (modes[conv.mode]) modes[conv.mode].checked = true;
       paint(conv);
     };
-    control(panel, "Send", async () => {
+    const agentLog = document.createElement("div");
+    agentLog.style.whiteSpace = "pre-wrap";
+    let stopRequested = false;
+    let agentJob = null;
+    let resumeUser = null;
+    const stopButton = control(panel, "Stop", async () => {
+      stopRequested = true;
+      if (agentJob) await deployAgentApi({ action: "stop", id: agentJob });
+      if (resumeUser) resumeUser();
+      logLine("Stopped by you.");
+    });
+    stopButton.hidden = true;
+    const continueButton = control(panel, "I'm done, continue", async () => {
+      continueButton.hidden = true;
+      if (resumeUser) resumeUser();
+    });
+    continueButton.hidden = true;
+    function logLine(text) {
+      agentLog.append(document.createTextNode(text + "\n"));
+    }
+    async function deployAgentApi(body) {
+      const response = await fetch("/api/supervisor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Local-Token": token },
+        body: JSON.stringify({ channel: "browser-agent", ...body }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Browser agent request failed.");
+      return data;
+    }
+    function ext(op, extra = {}, timeout = 30000) {
+      return new Promise((resolve, reject) => {
+        const id = crypto.randomUUID();
+        const timer = setTimeout(() => {
+          window.removeEventListener("message", onMessage);
+          reject(new Error("The CCC browser extension did not answer. Install extension v2.0 (Edge/Chrome, Load unpacked) and reload this page."));
+        }, timeout);
+        function onMessage(event) {
+          const m = event.data;
+          if (event.source !== window || event.origin !== location.origin || !m || m.src !== "ccc-ext" || m.type !== "agent-result" || m.id !== id) return;
+          clearTimeout(timer);
+          window.removeEventListener("message", onMessage);
+          if (m.result && m.result.error) reject(new Error(m.result.error));
+          else resolve(m.result);
+        }
+        window.addEventListener("message", onMessage);
+        window.postMessage({ src: "ccc-page", type: "agent", id, op, ...extra }, location.origin);
+      });
+    }
+    async function runAgent(task) {
+      stopRequested = false;
+      agentLog.replaceChildren();
+      const ping = await ext("ping", {}, 4000);
+      if (!ping || !ping.ok || parseInt(ping.version, 10) < 2)
+        throw new Error("Update the CCC browser extension to v2.0 first (see extension/README in the repo).");
+      agentJob = crypto.randomUUID();
+      await deployAgentApi({ action: "start", id: agentJob, task, consent: true });
+      stopButton.hidden = false;
+      logLine("Started. Opening the Azure portal in your browser...");
+      try {
+        await ext("open");
+        await new Promise((r) => setTimeout(r, 5000));
+        let results = [];
+        for (let step = 1; step <= 250 && !stopRequested; step++) {
+          const observation = await ext("observe");
+          const out = await deployAgentApi({ action: "step", id: agentJob, observation, results });
+          results = [];
+          logLine(`[${step}] ${out.log.length ? out.log[out.log.length - 1].thought : ""}`);
+          for (const note of out.log.length ? out.log[out.log.length - 1].notes : []) logLine("   ! " + note);
+          if (out.done) {
+            logLine("Finished: " + (out.summary || "done"));
+            break;
+          }
+          if (out.status === "failed" || out.status === "stopped") {
+            logLine("Agent " + out.status + ".");
+            break;
+          }
+          if (out.wait_user) {
+            logLine("Waiting for you: " + out.wait_user);
+            continueButton.hidden = false;
+            await new Promise((resolve) => (resumeUser = resolve));
+            resumeUser = null;
+            continue;
+          }
+          for (const action of out.actions) {
+            if (stopRequested) break;
+            const r = await ext("act", { action });
+            results.push(`${action.do} ${action.id || ""} -> ${r.result}`);
+            await new Promise((resolve) => setTimeout(resolve, 900));
+          }
+          if (!out.actions.length) await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+      } finally {
+        stopButton.hidden = true;
+        continueButton.hidden = true;
+      }
+    }
+    const sendButton = control(panel, "Send", async () => {
       const text = input.value.trim();
       if (!text) throw new Error("Describe what to deploy.");
       if (!consent.checked) throw new Error("Tick the Azure AI Foundry consent box first.");
-      const mode = modes.laptop.checked ? "laptop" : "cloud";
+      if (modes.browser.checked) {
+        input.value = "";
+        status.textContent = "";
+        await runAgent(text);
+        return;
+      }
+      const mode = "cloud";
       if (!current) {
         const id = crypto.randomUUID();
         paint(await deployApi({ action: "new", id, mode }));
@@ -635,10 +738,8 @@
       paint(conv);
       await refreshHistory();
     });
-    panel.append(history, log, input, consentLabel);
-    // Send button was created before the inputs were appended; move it after the consent box.
-    panel.append(panel.querySelector("button"));
-    panel.append(planBox);
+    // Buttons were created before the inputs; append everything in display order.
+    panel.append(history, log, input, consentLabel, sendButton, stopButton, continueButton, agentLog, planBox);
     content.append(panel);
     refreshHistory().catch((error) => {
       status.textContent = error.message;

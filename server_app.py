@@ -25,6 +25,7 @@ import hub_jobs
 import hub_chat
 import hub_report
 import deploy_chat
+import browser_agent
 import live_workflow
 import weather_console
 
@@ -366,7 +367,7 @@ class Handler(app.Handler):
         if self.path == '/api/supervisor':
             try:
                 size = int(self.headers.get('Content-Length', '0'))
-                if not 0 < size <= 16384:
+                if not 0 < size <= 120000:
                     return self.send(400, {'error': 'Invalid job request length.'})
                 payload = json.loads(self.rfile.read(size))
                 if not isinstance(payload, dict):
@@ -402,6 +403,11 @@ class Handler(app.Handler):
                         return self.send(200, {'filename': name, 'pdf_base64': base64.b64encode(pdf).decode('ascii')})
                     answer = hub_jobs.dispatch(who, payload, caller)
                     return self.send(200, answer)
+                if payload.get('channel') == 'browser-agent':
+                    try:
+                        return self.send(200, browser_agent.dispatch(current_user(), payload, ai_assist.chat))
+                    except LookupError:
+                        return self.send(400, {'error': 'Azure AI Foundry is not configured for this app.'})
                 if payload.get('channel') == 'deploy-chat':
                     who = current_user()
                     try:
