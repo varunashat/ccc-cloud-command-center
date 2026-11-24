@@ -9,7 +9,7 @@
   };
   const labels = {infrastructure:'Infrastructure',security:'Security',cost:'Cost optimization',modernization:'Modernization'};
   const style = document.createElement('style');
-  style.textContent = `body.hub-active main > :not(#assessment-workspace){display:none!important}
+  style.textContent = `#ccc-ai-btn{display:none!important}body.hub-active main > :not(#assessment-workspace){display:none!important}
     #assessment-workspace{max-width:1250px} #assessment-workspace .hub-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
     #assessment-workspace .panel{margin:18px 0;padding:22px;border:1px solid #293950;border-radius:14px;background:#111c30}
     #assessment-workspace h2{font-size:20px;margin:0 0 12px} #assessment-workspace button{margin:4px}
