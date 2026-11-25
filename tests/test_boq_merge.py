@@ -61,3 +61,34 @@ class CalculatorExportTest(unittest.TestCase):
         self.assertEqual((items[0]["quantity"], items[0]["os"]), (4, "windows"))
         self.assertEqual((items[1]["sku"], items[1]["quantity"]), ("P15", 5))
         self.assertAlmostEqual(items[2]["monthly"], 1555.99)   # AED column when pricing in AED
+
+
+class TrafficManagerTest(unittest.TestCase):
+    class FakeBook:
+        def __init__(self, unit="1M"):
+            self.unit = unit
+
+        def query(self, flt):
+            base = {"type": "Consumption", "serviceName": "Traffic Manager", "armRegionName": "Global", "tierMinimumUnits": "0"}
+            return [base | {"meterName": "Basic DNS Queries", "skuName": "Basic", "unitOfMeasure": self.unit, "retailPrice": 0.54},
+                    base | {"meterName": "Basic Health Checks - Azure Endpoints", "skuName": "Basic", "unitOfMeasure": "1", "retailPrice": 0.36},
+                    base | {"meterName": "Fast Interval Health Check Add-on", "skuName": "Basic", "unitOfMeasure": "1", "retailPrice": 1.0},
+                    base | {"meterName": "Basic Health Checks - External Endpoints", "skuName": "Basic", "unitOfMeasure": "1", "retailPrice": 0.54}]
+
+    def test_priced_from_dns_queries_and_endpoint_checks(self):
+        e = app.est()
+        item = e.normalize_item({"type": "Traffic Manager", "name": "TM", "endpoints": 2, "queries_millions": 10}, DEFAULTS)
+        line = e.PRICERS[item["type"]](self.FakeBook(), item)
+        self.assertAlmostEqual(line["monthly"]["payg"], 10 * 0.54 + 2 * 0.36, places=2)
+
+    def test_unavailable_price_is_a_clear_error(self):
+        e = app.est()
+        item = e.normalize_item({"type": "traffic_manager", "name": "TM"}, DEFAULTS)
+        empty = type("B", (), {"query": lambda self, f: []})()
+        with self.assertRaises(e.EstimateError):
+            e.PRICERS["traffic_manager"](empty, item)
+
+    def test_ai_intake_accepts_traffic_manager(self):
+        e = app.est()
+        items, _, _ = e.parse_ai_items('{"items":[{"type":"traffic_manager","name":"TM","endpoints":3}],"questions":[]}', DEFAULTS)
+        self.assertEqual((items[0]["type"], items[0]["endpoints"]), ("traffic_manager", 3))

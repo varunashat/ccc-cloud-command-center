@@ -57,7 +57,7 @@ DISK_SIZES = [(4, 32), (6, 64), (10, 128), (15, 256), (20, 512), (30, 1024), (40
 DISK_TIERS = {"premium": ("P", "Premium SSD Managed Disks"), "standardssd": ("E", "Standard SSD Managed Disks"),
               "standard": ("S", "Standard HDD Managed Disks")}
 TYPES = ["vm", "disk", "sql_db", "sql_mi", "app_service", "blob", "backup", "bandwidth", "log_analytics",
-         "firewall", "vpn_gateway", "aks", "public_ip", "custom"]
+         "firewall", "vpn_gateway", "aks", "public_ip", "traffic_manager", "custom"]
 TYPE_ALIASES = {"virtual machine": "vm", "virtual machines": "vm", "vm": "vm", "server": "vm", "managed disk": "disk",
                 "disk": "disk", "sql database": "sql_db", "azure sql": "sql_db", "sql db": "sql_db", "sql_db": "sql_db",
                 "sql managed instance": "sql_mi", "sql mi": "sql_mi", "sql_mi": "sql_mi", "app service": "app_service",
@@ -67,13 +67,14 @@ TYPE_ALIASES = {"virtual machine": "vm", "virtual machines": "vm", "vm": "vm", "
                 "monitoring": "log_analytics", "log_analytics": "log_analytics", "firewall": "firewall",
                 "azure firewall": "firewall", "vpn": "vpn_gateway", "vpn gateway": "vpn_gateway",
                 "vpn_gateway": "vpn_gateway", "aks": "aks", "kubernetes": "aks", "public ip": "public_ip",
-                "public_ip": "public_ip", "custom": "custom", "other": "custom"}
+                "public_ip": "public_ip", "traffic manager": "traffic_manager", "traffic_manager": "traffic_manager",
+                "azure traffic manager": "traffic_manager", "custom": "custom", "other": "custom"}
 
 
 LABELS = {"vm": "Virtual Machines", "disk": "Managed Disks", "sql_db": "Azure SQL Database", "sql_mi": "SQL Managed Instance",
           "app_service": "App Service", "blob": "Blob Storage", "backup": "Azure Backup", "bandwidth": "Bandwidth",
           "log_analytics": "Log Analytics", "firewall": "Azure Firewall", "vpn_gateway": "VPN Gateway", "aks": "AKS",
-          "public_ip": "Public IP", "custom": "Other / services"}
+          "public_ip": "Public IP", "traffic_manager": "Traffic Manager", "custom": "Other / services"}
 
 
 class EstimateError(ValueError):
@@ -311,6 +312,9 @@ def normalize_item(raw, defaults):
         it["s2s"] = int(num(g("s2s", "connections"), 1) or 1)
     elif t == "aks":
         it["tier"] = "standard" if "stand" in str(g("tier", d="standard")).lower() else "free"
+    elif t == "traffic_manager":
+        it["queries_millions"] = max(0.0, num(g("queries_millions", "queries", "dns_queries"), 1.0))
+        it["endpoints"] = max(1, int(num(g("endpoints", "endpoint_count"), 2) or 2))
     elif t == "custom":
         it["monthly"] = num(g("monthly", "monthly_cost", "price"), None)
         if it["monthly"] is None:
@@ -543,13 +547,31 @@ def price_public_ip(pb, it):
     return _line(it, "Standard static public IPv4", "per IP / month", {"payg": float(p["retailPrice"]) * it["hours"]}, [_meter(p)])
 
 
+def price_traffic_manager(pb, it):
+    """DNS queries (tiered, per million) plus health checks for Azure endpoints, from the Retail Prices API."""
+    items = _cons(pb.query("serviceName eq 'Traffic Manager'"))
+    text = lambda i: (i.get("meterName", "") + " " + i.get("skuName", "") + " " + i.get("productName", ""))
+    dns = [i for i in items if re.search(r"DNS Quer", text(i), re.I)]
+    checks = [i for i in items if re.search(r"Health Check", text(i), re.I) and not re.search(r"Fast|External|Non-Azure", text(i), re.I)]
+    if not dns or not checks:
+        raise EstimateError("No Azure price found for Traffic Manager (DNS queries / health checks).")
+    unit = str(dns[0].get("unitOfMeasure", "")).upper()
+    per_million = 1000.0 if unit.startswith("1B") else 1.0          # tiers are in units of the meter: millions or billions
+    dns_cost = _tiered(dns, it["queries_millions"] / per_million)
+    check = _first(checks, "Traffic Manager health check")
+    monthly = dns_cost + float(check["retailPrice"]) * it["endpoints"]
+    cfg = f"{it['endpoints']} Azure endpoint(s) · {it['queries_millions']:g} million DNS queries/month"
+    return _line(it, cfg, "per profile / month", {"payg": monthly}, [_meter(dns[0]), _meter(check)],
+                 ["Global service. Traffic View and fast-interval health checks are not included."])
+
+
 def price_custom(pb, it):
     return _line(it, "Custom line (entered value)", "per unit / month", {"payg": it["monthly"]}, [], ["Value entered by user, not from Azure price list."])
 
 
 PRICERS = {"vm": price_vm, "disk": price_disk, "sql_db": price_sql, "sql_mi": price_sql, "app_service": price_app_service,
            "blob": price_blob, "backup": price_backup, "bandwidth": price_bandwidth, "log_analytics": price_log_analytics,
-           "firewall": price_firewall, "vpn_gateway": price_vpn, "aks": price_aks, "public_ip": price_public_ip, "custom": price_custom}
+           "firewall": price_firewall, "vpn_gateway": price_vpn, "aks": price_aks, "public_ip": price_public_ip, "traffic_manager": price_traffic_manager, "custom": price_custom}
 
 
 # --------------------------------------------------------------------------- input readers
@@ -643,6 +665,8 @@ def _calculator_export(rows, p, defaults):
                 rd = re.search(r"\b(LRS|GRS|ZRS|RA-GRS)\b", desc)
                 if m:
                     raw = base | {"type": "backup", "quantity": int(m[1]), "size_gb": float(m[2]), "redundancy": rd[1] if rd else "GRS"}
+            elif low == "traffic manager":
+                raw = base | {"type": "traffic_manager", "region": "global"}
             elif low == "bandwidth":
                 g = re.search(r"([\d.,]+)\s*GB", desc, re.I)
                 if g and float(g[1].replace(",", "")) > 0:
@@ -1042,7 +1066,7 @@ def write_template(path):
                  ("blob", "Tier Hot/Cool/Cold/Archive; Redundancy LRS/ZRS/GRS; GB"), ("backup", "Quantity = protected VMs; GB = protected size per VM; Redundancy LRS/GRS; Storage GB optional"),
                  ("bandwidth", "GB = internet egress per month"), ("log_analytics", "GB = ingestion per day"),
                  ("firewall", "Tier Standard/Premium/Basic; GB processed per month"), ("vpn_gateway", "SKU VpnGw1…; Hours"),
-                 ("aks", "Tier standard/free (add node pools as vm lines)"), ("public_ip", "Quantity"), ("custom", "Monthly = your own monthly price"),
+                 ("aks", "Tier standard/free (add node pools as vm lines)"), ("public_ip", "Quantity"), ("traffic_manager", "Endpoints and DNS queries in millions per month"), ("custom", "Monthly = your own monthly price"),
                  ("Region", "Azure region name, e.g. uaenorth, uaecentral, westeurope (blank = default)")]
     for r, (a, b) in enumerate(help_rows, 1):
         hs.cell(r, 1, a).font = Font(bold=(r == 1)); hs.cell(r, 2, b)
@@ -1051,9 +1075,9 @@ def write_template(path):
 
 
 # --------------------------------------------------------------------------- AI helpers (Azure AI Foundry / any chat model)
-SCHEMA_HINT = ('Return ONLY JSON: {"items":[{"type":"vm|disk|sql_db|sql_mi|app_service|blob|backup|bandwidth|log_analytics|firewall|vpn_gateway|aks|public_ip|custom",'
+SCHEMA_HINT = ('Return ONLY JSON: {"items":[{"type":"vm|disk|sql_db|sql_mi|app_service|blob|backup|bandwidth|log_analytics|firewall|vpn_gateway|aks|public_ip|traffic_manager|custom",'
                '"name":"...","region":"uaenorth","quantity":1,"hours":730,"sku":"D4s v5","vcpu":4,"ram_gb":16,"os":"windows|linux","ahub":false,'
-               '"disk_tier":"premium","disk_gb":128,"tier":"gp|bc|Hot|Standard","redundancy":"LRS|GRS","gb":0,"vcores":4,"storage_gb":100,"monthly":0,"notes":"assumption made"}],'
+               '"disk_tier":"premium","disk_gb":128,"tier":"gp|bc|Hot|Standard","redundancy":"LRS|GRS","gb":0,"endpoints":2,"queries_millions":1,"vcores":4,"storage_gb":100,"monthly":0,"notes":"assumption made"}],'
                '"questions":["what is still unknown"]}. Include only fields relevant to each type. Never include prices.')
 
 
