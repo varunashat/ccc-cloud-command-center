@@ -712,7 +712,7 @@ def discovery_calculator_request(items,extras=(),disk_tier='premium'):
   elif t=='sql_db': k=('Azure SQL Database',f"{'General Purpose' if i['tier']=='gp' else 'Business Critical'} vCore, {i['vcores']} vCores, {i['storage_gb']} GB storage",reg)
   elif t=='public_ip': k=('Public IP Address','Standard, static',reg)
   elif t=='azure_service': k=(i.get('service_name') or 'Azure service',' '.join(x for x in (i.get('product_name'),i.get('sku_name'),i.get('meter_name')) if x) or 'default configuration',reg)
-  elif t=='traffic_manager': k=('Traffic Manager',f"{i.get('endpoints',2)} Azure endpoints, {i.get('queries_millions',1):g} million DNS queries per month",'Global')
+  elif t=='traffic_manager': k=('Traffic Manager',f"{i.get('queries_millions',1):g} million DNS queries, {i.get('endpoints',0)} Azure endpoints, {i.get('fast_endpoints',0)} fast Azure endpoints, {i.get('external_endpoints',0)} external endpoints, {i.get('fast_external_endpoints',0)} fast external endpoints, {i.get('user_measurements_millions',0):g} million user measurements, {i.get('data_points_millions',0):g} million data points processed",'Global')
   elif t=='app_service': k=('App Service plan',f"{i['sku']}, {i['os'].title()}",reg)
   elif t=='aks': k=('Azure Kubernetes Service',f"{i['tier']} tier control plane (node pools listed as Virtual Machines)",reg)
   elif t=='firewall': k=('Azure Firewall',f"{i['tier']}",reg)

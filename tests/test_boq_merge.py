@@ -74,7 +74,10 @@ class TrafficManagerTest(unittest.TestCase):
                     base | {"meterName": "DNS Queries", "skuName": "Azure Endpoint", "unitOfMeasure": "1M", "retailPrice": 0.375, "tierMinimumUnits": "1000", "meterId": "a"},
                     base | {"meterName": "DNS Queries", "skuName": "Non-Azure Endpoint", "unitOfMeasure": "1M", "retailPrice": 9.0, "meterId": "b"},
                     base | {"meterName": "Azure Endpoint Health Checks", "skuName": "Azure Endpoint", "unitOfMeasure": "1", "retailPrice": 0.36, "meterId": "c"},
-                    base | {"meterName": "Azure Endpoint Fast Interval Health Check Add-ons", "skuName": "Azure Endpoint", "unitOfMeasure": "1", "retailPrice": 1.0, "meterId": "d"}]
+                    base | {"meterName": "Azure Endpoint Fast Interval Health Check Add-ons", "skuName": "Azure Endpoint", "unitOfMeasure": "1", "retailPrice": 1.0, "meterId": "d"},
+                    base | {"meterName": "Non-Azure Endpoint Health Checks", "skuName": "Non-Azure Endpoint", "unitOfMeasure": "1", "retailPrice": 0.54, "meterId": "e"},
+                    base | {"meterName": "Non-Azure Endpoint Fast Interval Health Check Add-ons", "skuName": "Non-Azure Endpoint", "unitOfMeasure": "1", "retailPrice": 2.0, "meterId": "f"},
+                    base | {"meterName": "Traffic View Data Points Processed", "skuName": "Traffic View", "unitOfMeasure": "1M", "retailPrice": 2.0, "meterId": "g"}]
 
     def test_priced_from_dns_queries_and_endpoint_checks(self):
         e = app.est()
@@ -157,3 +160,29 @@ class GenericPricerTest(unittest.TestCase):
         self.assertIn("web1", text)
         self.assertIn("questions", text)
         self.assertIn("azure_service", text)
+
+
+class TrafficManagerFullTest(unittest.TestCase):
+    def test_all_calculator_parameters(self):
+        e = app.est()
+        item = e.normalize_item({"type": "traffic_manager", "name": "TM", "queries_millions": 100, "endpoints": 8, "fast_endpoints": 4,
+                                 "external_endpoints": 8, "fast_external_endpoints": 5, "user_measurements_millions": 12, "data_points_millions": 6}, DEFAULTS)
+        line = e.PRICERS["traffic_manager"](TrafficManagerTest.FakeBook(), item)
+        # 100M*0.54 + 8*0.36 + 4*1 + 8*0.54 + 5*2 + 6M*2 = 54 + 2.88 + 4 + 4.32 + 10 + 12
+        self.assertAlmostEqual(line["monthly"]["payg"], 87.2, places=2)
+
+    def test_calculator_export_row_is_parsed(self):
+        import openpyxl
+        e = app.est()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "x.xlsx"
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.append(["Estimate"])
+            ws.append(["Service category", "Service type", "Custom name", "Region", "Description", "Estimated Monthly USD"])
+            ws.append(["Networking", "Traffic Manager", "", "Global", "100 million DNS queries, 8 Azure endpoints, 4 Fast Azure endpoints, 8 External endpoints, 5 Fast External endpoints, 12 million user measurements, 6 million data points processed", 90])
+            wb.save(path)
+            items, fmt, _ = e.read_input(path, DEFAULTS)
+        tm = items[0]
+        self.assertEqual((tm["type"], tm["queries_millions"], tm["endpoints"], tm["fast_endpoints"]), ("traffic_manager", 100, 8, 4))
+        self.assertEqual((tm["external_endpoints"], tm["fast_external_endpoints"], tm["data_points_millions"], tm["user_measurements_millions"]), (8, 5, 6, 12))

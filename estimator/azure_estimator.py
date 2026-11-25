@@ -314,7 +314,12 @@ def normalize_item(raw, defaults):
         it["tier"] = "standard" if "stand" in str(g("tier", d="standard")).lower() else "free"
     elif t == "traffic_manager":
         it["queries_millions"] = max(0.0, num(g("queries_millions", "queries", "dns_queries"), 1.0))
-        it["endpoints"] = max(1, int(num(g("endpoints", "endpoint_count"), 2) or 2))
+        it["endpoints"] = max(0, int(num(g("endpoints", "endpoint_count", "azure_endpoints"), 2) or 0))
+        it["fast_endpoints"] = max(0, int(num(g("fast_endpoints", "fast_azure_endpoints"), 0) or 0))
+        it["external_endpoints"] = max(0, int(num(g("external_endpoints"), 0) or 0))
+        it["fast_external_endpoints"] = max(0, int(num(g("fast_external_endpoints"), 0) or 0))
+        it["user_measurements_millions"] = max(0.0, num(g("user_measurements_millions", "user_measurements"), 0.0))
+        it["data_points_millions"] = max(0.0, num(g("data_points_millions", "data_points", "traffic_view_data_points"), 0.0))
     elif t == "azure_service":
         it["service_name"] = str(g("service_name", "service_name_", "azure_service", d="")).strip()
         it["product_name"] = str(g("product_name", "product", d="")).strip()
@@ -556,19 +561,35 @@ def price_public_ip(pb, it):
 
 
 def price_traffic_manager(pb, it):
-    """DNS queries (tiered, per million) plus health checks for Azure endpoints, from the Retail Prices API (Global meters)."""
+    """Azure Traffic Manager as in the Azure calculator: DNS queries (tiered), Azure / external endpoints with fast-interval add-ons,
+    Real User Measurements and Traffic View data points. All Global meters from the Retail Prices API."""
     items = _cons(pb.query("serviceName eq 'Traffic Manager' and armRegionName eq 'Global'"))
-    dns = [i for i in items if i.get("skuName") == "Azure Endpoint" and i.get("meterName") == "DNS Queries"]
-    checks = [i for i in items if i.get("meterName") == "Azure Endpoint Health Checks"]
-    if not dns or not checks:
-        raise EstimateError("No Azure price found for Traffic Manager (DNS queries / health checks).")
+
+    def meter(name, sku=None):
+        return [i for i in items if i.get("meterName") == name and (sku is None or i.get("skuName") == sku)]
+
+    dns = meter("DNS Queries", "Azure Endpoint")
+    if not dns:
+        raise EstimateError("No Azure price found for Traffic Manager DNS queries.")
     per_million = 1000.0 if str(dns[0].get("unitOfMeasure", "")).upper().startswith("1B") else 1.0
-    dns_cost = _tiered(dns, it["queries_millions"] / per_million)
-    check = _first(checks, "Traffic Manager health check")
-    monthly = dns_cost + float(check["retailPrice"]) * it["endpoints"]
-    cfg = f"{it['endpoints']} Azure endpoint(s) · {it['queries_millions']:g} million DNS queries/month"
-    return _line(it, cfg, "per profile / month", {"payg": monthly}, [_meter(dns[0]), _meter(check)],
-                 ["Global service. Traffic View and fast-interval health checks are not included."])
+    monthly = _tiered(dns, it["queries_millions"] / per_million)
+    used, parts = [_meter(dns[0])], [f"{it['queries_millions']:g} million DNS queries"]
+    for label, name, count in (("Azure endpoint(s)", "Azure Endpoint Health Checks", it["endpoints"]),
+                               ("fast Azure endpoint(s)", "Azure Endpoint Fast Interval Health Check Add-ons", it["fast_endpoints"]),
+                               ("external endpoint(s)", "Non-Azure Endpoint Health Checks", it["external_endpoints"]),
+                               ("fast external endpoint(s)", "Non-Azure Endpoint Fast Interval Health Check Add-ons", it["fast_external_endpoints"]),
+                               ("million Traffic View data points", "Traffic View Data Points Processed", it["data_points_millions"])):
+        if not count:
+            continue
+        rows = meter(name)
+        if not rows:
+            raise EstimateError(f"No Azure price found for Traffic Manager {label}.")
+        monthly += float(_first(rows, "Traffic Manager " + label)["retailPrice"]) * count
+        used.append(_meter(rows[0]))
+        parts.append(f"{count:g} {label}")
+    if it["user_measurements_millions"]:
+        parts.append(f"{it['user_measurements_millions']:g} million user measurements (no charge)")
+    return _line(it, " · ".join(parts), "per profile / month", {"payg": monthly}, used, ["Global service, priced from the Azure Retail Prices API."])
 
 
 def _meter_label(i):
@@ -753,7 +774,13 @@ def _calculator_export(rows, p, defaults):
                 if m:
                     raw = base | {"type": "backup", "quantity": int(m[1]), "size_gb": float(m[2]), "redundancy": rd[1] if rd else "GRS"}
             elif low == "traffic manager":
-                raw = base | {"type": "traffic_manager", "region": "global"}
+                def n(pattern):
+                    m = re.search(r"([\d.,]+)\s*(?:million(?:\(s\))?\s*)?" + pattern, desc, re.I)
+                    return float(m[1].replace(",", "")) if m else 0
+                raw = base | {"type": "traffic_manager", "region": "global", "queries_millions": n(r"(?:million\(s\)?\s*)?DNS quer"),
+                              "endpoints": n(r"(?<!fast )(?<!external )Azure endpoint"), "fast_endpoints": n(r"fast Azure endpoint"),
+                              "external_endpoints": n(r"(?<!fast )external endpoint"), "fast_external_endpoints": n(r"fast external endpoint"),
+                              "user_measurements_millions": n(r"(?:million\(s\)?\s*)?user measurement"), "data_points_millions": n(r"(?:million\(s\)?\s*)?data points")}
             elif low == "bandwidth":
                 g = re.search(r"([\d.,]+)\s*GB", desc, re.I)
                 if g and float(g[1].replace(",", "")) > 0:
@@ -1164,7 +1191,7 @@ def write_template(path):
 # --------------------------------------------------------------------------- AI helpers (Azure AI Foundry / any chat model)
 SCHEMA_HINT = ('Return ONLY JSON: {"items":[{"type":"vm|disk|sql_db|sql_mi|app_service|blob|backup|bandwidth|log_analytics|firewall|vpn_gateway|aks|public_ip|traffic_manager|azure_service|custom",'
                '"name":"...","region":"uaenorth","quantity":1,"hours":730,"sku":"D4s v5","vcpu":4,"ram_gb":16,"os":"windows|linux","ahub":false,'
-               '"disk_tier":"premium","disk_gb":128,"tier":"gp|bc|Hot|Standard","redundancy":"LRS|GRS","gb":0,"service_name":"Azure Bastion","product_name":"","sku_name":"Standard","meter_name":"","endpoints":2,"queries_millions":1,"vcores":4,"storage_gb":100,"monthly":0,"notes":"assumption made"}],'
+               '"disk_tier":"premium","disk_gb":128,"tier":"gp|bc|Hot|Standard","redundancy":"LRS|GRS","gb":0,"fast_endpoints":0,"external_endpoints":0,"fast_external_endpoints":0,"user_measurements_millions":0,"data_points_millions":0,"service_name":"Azure Bastion","product_name":"","sku_name":"Standard","meter_name":"","endpoints":2,"queries_millions":1,"vcores":4,"storage_gb":100,"monthly":0,"notes":"assumption made"}],'
                '"questions":["what is still unknown"]}. Include only fields relevant to each type. Never include prices. For any Azure service that has no specific type, use type azure_service with the exact serviceName from the Azure Retail Prices list (for example "Azure Bastion"), plus product_name / sku_name / meter_name to pick the meter, and quantity as usage in that meter unit (instances for hourly meters).')
 
 
