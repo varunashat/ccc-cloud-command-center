@@ -65,15 +65,16 @@ class CalculatorExportTest(unittest.TestCase):
 
 class TrafficManagerTest(unittest.TestCase):
     class FakeBook:
-        def __init__(self, unit="1M"):
-            self.unit = unit
+        currency = "USD"
+        calls = 0
 
         def query(self, flt):
-            base = {"type": "Consumption", "serviceName": "Traffic Manager", "armRegionName": "Global", "tierMinimumUnits": "0"}
-            return [base | {"meterName": "Basic DNS Queries", "skuName": "Basic", "unitOfMeasure": self.unit, "retailPrice": 0.54},
-                    base | {"meterName": "Basic Health Checks - Azure Endpoints", "skuName": "Basic", "unitOfMeasure": "1", "retailPrice": 0.36},
-                    base | {"meterName": "Fast Interval Health Check Add-on", "skuName": "Basic", "unitOfMeasure": "1", "retailPrice": 1.0},
-                    base | {"meterName": "Basic Health Checks - External Endpoints", "skuName": "Basic", "unitOfMeasure": "1", "retailPrice": 0.54}]
+            base = {"type": "Consumption", "serviceName": "Traffic Manager", "armRegionName": "Global", "tierMinimumUnits": "0", "productName": "Traffic Manager"}
+            return [base | {"meterName": "DNS Queries", "skuName": "Azure Endpoint", "unitOfMeasure": "1M", "retailPrice": 0.54, "meterId": "a"},
+                    base | {"meterName": "DNS Queries", "skuName": "Azure Endpoint", "unitOfMeasure": "1M", "retailPrice": 0.375, "tierMinimumUnits": "1000", "meterId": "a"},
+                    base | {"meterName": "DNS Queries", "skuName": "Non-Azure Endpoint", "unitOfMeasure": "1M", "retailPrice": 9.0, "meterId": "b"},
+                    base | {"meterName": "Azure Endpoint Health Checks", "skuName": "Azure Endpoint", "unitOfMeasure": "1", "retailPrice": 0.36, "meterId": "c"},
+                    base | {"meterName": "Azure Endpoint Fast Interval Health Check Add-ons", "skuName": "Azure Endpoint", "unitOfMeasure": "1", "retailPrice": 1.0, "meterId": "d"}]
 
     def test_priced_from_dns_queries_and_endpoint_checks(self):
         e = app.est()
@@ -92,3 +93,67 @@ class TrafficManagerTest(unittest.TestCase):
         e = app.est()
         items, _, _ = e.parse_ai_items('{"items":[{"type":"traffic_manager","name":"TM","endpoints":3}],"questions":[]}', DEFAULTS)
         self.assertEqual((items[0]["type"], items[0]["endpoints"]), ("traffic_manager", 3))
+
+
+def rows(*specs):
+    out = []
+    for n, (product, sku, meter, region, price, unit) in enumerate(specs):
+        out.append({"type": "Consumption", "serviceName": "Azure Bastion", "productName": product, "skuName": sku, "meterName": meter,
+                    "armRegionName": region, "retailPrice": price, "unitOfMeasure": unit, "tierMinimumUnits": "0", "meterId": f"m{n}"})
+    return out
+
+
+class Book:
+    currency = "USD"
+    calls = 0
+
+    def __init__(self, data):
+        self.data = data
+
+    def query(self, flt):
+        return self.data
+
+
+class GenericPricerTest(unittest.TestCase):
+    def item(self, **kw):
+        return app.est().normalize_item({"type": "azure_service", "name": "x", "service_name": "Azure Bastion", **kw}, DEFAULTS)
+
+    def test_hourly_meter_times_instances_and_hours(self):
+        e = app.est()
+        data = rows(("Azure Bastion", "Standard", "Standard Gateway", "uaenorth", 0.29, "1 Hour"))
+        line = e.PRICERS["azure_service"](Book(data), self.item(quantity=2, sku_name="Standard"))
+        self.assertAlmostEqual(line["monthly"]["payg"], 0.29 * 730 * 2, places=2)
+
+    def test_ambiguous_meter_is_refused_with_choices(self):
+        e = app.est()
+        data = rows(("Azure Bastion", "Basic", "Basic Gateway", "uaenorth", 0.19, "1 Hour"), ("Azure Bastion", "Standard", "Standard Gateway", "uaenorth", 0.29, "1 Hour"))
+        with self.assertRaises(e.EstimateError) as cm:
+            e.PRICERS["azure_service"](Book(data), self.item())
+        self.assertIn("Basic Gateway", str(cm.exception))
+        self.assertIn("Standard Gateway", str(cm.exception))
+
+    def test_no_match_is_an_error_not_a_guess(self):
+        e = app.est()
+        with self.assertRaises(e.EstimateError):
+            e.PRICERS["azure_service"](Book(rows(("Azure Bastion", "Basic", "Basic Gateway", "uaenorth", 0.19, "1 Hour"))), self.item(sku_name="Nope"))
+
+    def test_zone_priced_service_uses_the_chosen_price_region(self):
+        e = app.est()
+        data = rows(("Azure Front Door", "Premium", "Premium Base Fees", "Zone 1", 330.0, "1/Month"))
+        line = e.PRICERS["azure_service"](Book(data), self.item(price_region="Zone 1", quantity=1))
+        self.assertAlmostEqual(line["monthly"]["payg"], 330.0)
+
+    def test_catalog_search_keeps_region_global_and_zones(self):
+        e = app.est()
+        data = rows(("P", "S", "M1", "uaenorth", 1.0, "1"), ("P", "S", "M2", "Global", 2.0, "1"), ("P", "S", "M3", "Zone 1", 3.0, "1"),
+                    ("P", "S", "M4", "westeurope", 4.0, "1"), ("P", "S", "M5", "US Gov", 5.0, "1"))
+        book = type("B", (), {"currency": "USD", "calls": 0, "fetch": lambda self, url: {"Items": data}})()
+        got = e.catalog_search(book, "Bastion", "uaenorth")
+        self.assertEqual(sorted(m["meter"] for m in got["results"]), ["M1", "M2", "M3"])
+
+    def test_intake_prompt_carries_existing_workload_and_allows_questions(self):
+        e = app.est()
+        text = e.ai_intake_prompt("add traffic manager", "uaenorth", "- vm web1 | region uaenorth | qty 4")
+        self.assertIn("web1", text)
+        self.assertIn("questions", text)
+        self.assertIn("azure_service", text)
