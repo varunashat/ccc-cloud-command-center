@@ -207,7 +207,10 @@ def _workflow(action,payload):
   reply=foundry_chat('You are a precise Azure solution architect. Output JSON only. Never output prices.',e.ai_intake_prompt(text,defaults['region']),4000)
   items,warnings,questions=e.parse_ai_items(reply,defaults)
   if not items: raise ValueError('The AI did not return usable line items. '+(' '.join(warnings))[:300])
-  name=uuid.uuid4().hex[:8]+'-ai-intake.json'
+  base=str(payload.get('base_input') or '')
+  if base:
+   items,warnings=merge_base(e,base,defaults,items,warnings)
+  name=uuid.uuid4().hex[:8]+('-combined' if base else '-ai-intake')+'.json'
   (ROOT/'estimator'/'inputs').mkdir(parents=True,exist_ok=True)
   (ROOT/'estimator'/'inputs'/name).write_text(json.dumps({'items':items,'questions':questions,'warnings':warnings},indent=2),encoding='utf-8')
   result={'input':name,'items':items,'questions':questions,'warnings':warnings}; source='Azure AI Foundry intake; review before pricing'
@@ -467,6 +470,12 @@ def estimate_defaults(payload):
  tier=payload.get('disk_tier','premium')
  if tier not in ('premium','standardssd','standard'): raise ValueError('Unknown disk tier.')
  return {'region':e.norm_region(payload.get('region','uaenorth'),'uaenorth'),'hours':float(hours),'ahub':payload.get('ahub') is True,'disk_tier':tier,'include_off':payload.get('include_off') is True,'currency':cur}
+def merge_base(e,base,defaults,new_items,warnings):
+ """Put the uploaded BOQ / RVTools / Migrate lines first and the newly added services after them."""
+ if not re.fullmatch(INPUT_RE,base) or not (ROOT/'estimator'/'inputs'/base).is_file(): raise ValueError('The uploaded file is no longer available. Upload it again.')
+ old_items,_,old_warnings=e.read_input(ROOT/'estimator'/'inputs'/base,defaults)
+ return list(old_items)+list(new_items),list(old_warnings)+list(warnings)
+
 def start_estimate(payload):
  name=str(payload.get('input',''))
  if not re.fullmatch(INPUT_RE,name) or not (ROOT/'estimator'/'inputs'/name).is_file(): raise ValueError('Upload an input file (or draft one with AI) first.')

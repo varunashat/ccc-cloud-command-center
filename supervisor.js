@@ -1,3 +1,26 @@
+(function () {
+  // The sign-in lasts 12 hours. An old tab then gets 401 on every action; say so instead of failing silently.
+  const original = window.fetch;
+  let shown = false;
+  window.fetch = async function () {
+    const response = await original.apply(this, arguments);
+    const url = String(arguments[0] && arguments[0].url ? arguments[0].url : arguments[0]);
+    if (response.status === 401 && url.startsWith('/') && !shown) {
+      shown = true;
+      const bar = document.createElement('div');
+      bar.setAttribute('role', 'alert');
+      bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#b45309;color:#fff;padding:12px 16px;font:15px system-ui,sans-serif;display:flex;gap:12px;align-items:center;justify-content:center';
+      bar.append('Your sign-in has expired, so uploads and actions will not work until you sign in again.');
+      const again = document.createElement('button');
+      again.textContent = 'Sign in again';
+      again.style.cssText = 'padding:6px 14px;border:0;border-radius:8px;font-weight:600;cursor:pointer';
+      again.onclick = () => location.reload();
+      bar.append(again);
+      document.body.append(bar);
+    }
+    return response;
+  };
+})();
 (() => {
   const panel = document.createElement('section');
   panel.className = 'panel';
