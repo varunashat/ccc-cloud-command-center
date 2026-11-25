@@ -35,3 +35,29 @@ class MergeTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CalculatorExportTest(unittest.TestCase):
+    def build(self, path):
+        import openpyxl
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(["Microsoft Azure Estimate X"])
+        ws.append(["Service category", "Service type", "Custom name", "Region", "Description", "Estimated Monthly USD", "Estimated Monthly AED"])
+        ws.append(["Compute", "Virtual Machines", "App VMs", "UAE North",
+                   "4 E4as v5 (4 vCPUs, 32 GB RAM) x 730 Hours (Pay as you go), Windows (Licence included), OS Only", 1354.88, 4979.18])
+        ws.append(["Storage", "Managed Disks", "", "UAE North", "Managed Disks, Premium SSD, LRS Redundancy, P15 Disk Type 5 Disks; Pay as you go", 207.36, 762.05])
+        ws.append(["Networking", "Azure Front Door", "Front Door", None, "Azure Front Door Premium - Base instance included", 423.4, 1555.99])
+        wb.save(path)
+
+    def test_reads_calculator_export(self):
+        e = app.est()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "Azure_Estimate.xlsx"
+            self.build(path)
+            items, fmt, warnings = e.read_input(path, {**DEFAULTS, "currency": "AED"})
+        self.assertEqual(fmt, "azure_calculator_export")
+        self.assertEqual([i["type"] for i in items], ["vm", "disk", "custom"])
+        self.assertEqual((items[0]["quantity"], items[0]["os"]), (4, "windows"))
+        self.assertEqual((items[1]["sku"], items[1]["quantity"]), ("P15", 5))
+        self.assertAlmostEqual(items[2]["monthly"], 1555.99)   # AED column when pricing in AED

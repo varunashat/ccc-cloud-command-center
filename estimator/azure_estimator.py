@@ -590,6 +590,76 @@ def _col(d, *frags, exclude=()):
     return None
 
 
+def _calculator_export(rows, p, defaults):
+    """Azure Pricing Calculator "Export" workbook: Service category | Service type | Custom name | Region | Description | Estimated Monthly <CUR>.
+    Services the estimator can price from the Retail Prices API are re-priced; others keep the calculator's own monthly figure."""
+    tbl = _table(rows, ["service type", "description"])
+    if not tbl:
+        return None
+    cur = str(defaults.get("currency") or "USD").upper()
+    items, warnings = [], []
+    for n, r in enumerate(tbl, start=3):
+        stype = str(_col(r, "service type") or "").strip()
+        desc = str(_col(r, "description") or "")
+        if not stype or str(_col(r, "service category") or "").strip().lower() in ("total", "support", "licensing program"):
+            continue
+        name = (str(_col(r, "custom name") or "").strip() or stype)[:120]
+        region = _col(r, "region") or defaults["region"]
+        src = f"{p.name} · calculator row {n}"
+        low = stype.lower()
+        cost = num(_col(r, "monthly " + cur.lower()))
+        if cost is None:
+            cost = num(_col(r, "monthly usd"))
+            if cost is not None and cur != "USD":
+                warnings.append(f"Row {n} ({name}): calculator value is in USD, shown as {cur}; re-check this line.")
+        base = {"name": name, "region": region, "source": src}
+        raw = None
+        try:
+            if low == "virtual machines":
+                m = re.search(r"(\d+)\s+([A-Za-z]+\d*[A-Za-z]*\s*v\d+)\s*\((\d+)\s*vCPUs?,\s*([\d.]+)\s*GB RAM\)\s*x\s*(\d+)\s*Hours", desc, re.I)
+                if m:
+                    raw = base | {"type": "vm", "quantity": int(m[1]), "sku": m[2], "vcpu": int(m[3]), "ram_gb": float(m[4]),
+                                  "hours": float(m[5]), "os": "windows" if "windows" in desc.lower() else "linux"}
+                    if "sql" in desc.lower():
+                        raw["notes"] = "Calculator line includes a SQL Server licence, which is not re-priced here; add it separately."
+                        warnings.append(f"Row {n} ({name}): includes SQL Server licence, not re-priced.")
+            elif low == "managed disks":
+                sku = re.search(r"\b([PES]\d{1,2})\b", desc)
+                tier = re.search(r"Premium SSD|Standard SSD|Standard HDD", desc, re.I)
+                count = re.search(r"(\d+)\s+Disks", desc, re.I)
+                if sku:
+                    raw = base | {"type": "disk", "sku": sku[1], "tier": tier[0] if tier else defaults["disk_tier"], "quantity": int(count[1]) if count else 1}
+            elif low == "ip addresses":
+                c = re.search(r"(\d+)\s+Static", desc, re.I)
+                raw = base | {"type": "public_ip", "quantity": int(c[1]) if c else 1}
+            elif low == "azure firewall":
+                t = re.search(r"(Basic|Standard|Premium)\s+tier", desc, re.I)
+                u = re.search(r"(\d+)\s+Logical", desc, re.I)
+                g = re.search(r"([\d.,]+)\s*GB Data processed", desc, re.I)
+                if t:
+                    raw = base | {"type": "firewall", "tier": t[1], "quantity": int(u[1]) if u else 1, "gb": float(g[1].replace(",", "")) if g else 0}
+            elif low == "azure backup":
+                m = re.search(r"(\d+)\s*Instance\(s\)\s*x\s*([\d.]+)\s*GB", desc, re.I)
+                rd = re.search(r"\b(LRS|GRS|ZRS|RA-GRS)\b", desc)
+                if m:
+                    raw = base | {"type": "backup", "quantity": int(m[1]), "size_gb": float(m[2]), "redundancy": rd[1] if rd else "GRS"}
+            elif low == "bandwidth":
+                g = re.search(r"([\d.,]+)\s*GB", desc, re.I)
+                if g and float(g[1].replace(",", "")) > 0:
+                    raw = base | {"type": "bandwidth", "gb": float(g[1].replace(",", ""))}
+            if raw:
+                items.append(normalize_item(raw, defaults))
+                continue
+        except EstimateError as e:
+            warnings.append(f"Row {n} ({name}): {e} Kept the calculator figure instead.")
+        if cost is None:
+            warnings.append(f"Row {n} ({name}): no price found, skipped.")
+            continue
+        items.append(normalize_item(base | {"type": "custom", "monthly": cost, "quantity": 1,
+                                            "notes": f"{stype}: calculator figure, not re-priced. {desc[:150]}"}, defaults))
+    return (items, "azure_calculator_export", warnings) if items else None
+
+
 def read_input(path, defaults):
     """Return (items, detected_format, warnings)."""
     p = Path(path)
@@ -662,6 +732,11 @@ def read_input(path, defaults):
                                                          "source": f"Azure Migrate · {t2}"}, defaults))
                     break
             return items, "azure_migrate", warnings
+    # Azure Pricing Calculator export (checked before the generic Type-column table: "Service type" also contains "type")
+    for title, rows in sheets.items():
+        got = _calculator_export(rows, p, defaults)
+        if got:
+            return got
     # BOQ template / generic table with a Type column
     for title, rows in sheets.items():
         tbl = _table(rows, ["type"])
