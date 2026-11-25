@@ -145,6 +145,143 @@ if (window.CCC_SERVER && document.getElementById('work-proposal')) {
       }
     };
   }
+  // Noventiq PPT builder: templates + source decks library, brief -> deck on the Noventiq template
+  const pptPanel = el('div', '', 'section');
+  pptPanel.hidden = true;
+  const pptApi = (body, raw) => fetch('/api/ppt-studio', {method: 'POST', headers: Object.assign({'X-Local-Token': token},
+    raw ? {'Content-Type': 'application/octet-stream', 'X-Ppt-Kind': raw.kind, 'X-File-Name': encodeURIComponent(raw.file.name)}
+        : {'Content-Type': 'application/json'}), body: raw ? raw.file : JSON.stringify(body)});
+  const pptJson = async response => {
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Request failed (' + response.status + ').');
+    return data;
+  };
+  const pptForm = el('form', '', 'proposal-form');
+  const pptMain = el('section', '', 'panel');
+  const pptSide = el('section', '', 'panel proposal-export');
+  const pptTitle = el('input');
+  pptTitle.maxLength = 120;
+  pptTitle.placeholder = 'e.g. Azure Migration Proposal for Acme';
+  const pptTemplate = el('select');
+  const pptBrief = el('textarea');
+  pptBrief.rows = 9;
+  pptBrief.maxLength = 6000;
+  pptBrief.placeholder = 'Describe the deck: customer, audience, goal, services to cover, key messages, any figures to include. ' +
+    'Noventiq facts (offices, certifications, service lines) are taken from the selected source decks.';
+  const pptCount = el('input');
+  pptCount.type = 'number';
+  pptCount.min = 3;
+  pptCount.max = 40;
+  pptCount.placeholder = 'Auto';
+  const pptSources = el('div', '', 'proposal-files');
+  const pptConsent = el('input');
+  pptConsent.type = 'checkbox';
+  const pptConsentLabel = el('label');
+  pptConsentLabel.append(pptConsent, ' Send the brief and selected source text to the configured Azure Foundry model.');
+  const pptBuild = el('button', 'Build Noventiq deck');
+  pptBuild.type = 'submit';
+  const pptOut = el('p', '', 'muted');
+  pptOut.setAttribute('role', 'status');
+  pptMain.append(el('h2', 'Build a Noventiq deck'), field('Deck title', pptTitle), field('Template', pptTemplate),
+    field('Brief', pptBrief), field('Number of slides (optional)', pptCount), el('h2', 'Noventiq source decks'),
+    el('p', 'Tick the decks the facts should come from.', 'muted'), pptSources);
+  pptSide.append(el('h2', 'Output'),
+    el('p', 'An editable .pptx built on the real layouts of the chosen Noventiq template. Check figures and placeholders in [brackets] before sending.', 'muted'),
+    pptConsentLabel, pptBuild, pptOut);
+  pptForm.append(pptMain, pptSide);
+
+  const libPanel = el('section', '', 'panel');
+  const libList = el('ul', '', 'proposal-files');
+  const libKind = el('select');
+  for (const [value, label] of [['template', 'Template (.potx / .pptx)'], ['source', 'Noventiq source deck'], ['guideline', 'Brand guideline']]) {
+    libKind.add(new Option(label, value));
+  }
+  const libFile = el('input');
+  libFile.type = 'file';
+  libFile.accept = '.pptx,.potx';
+  const libAdd = el('button', 'Add to library');
+  libAdd.type = 'button';
+  const libOut = el('p', '', 'muted');
+  libOut.setAttribute('role', 'status');
+  libPanel.append(el('h2', 'Noventiq library'),
+    el('p', 'Templates supply the slide layouts. Source decks are the factual source. Guidelines are passed to the model as brand rules.', 'muted'),
+    libList, el('h2', 'Add a file'), field('Type', libKind), field('PowerPoint file (up to 60 MB)', libFile), libAdd, libOut);
+  pptPanel.append(pptForm, libPanel);
+
+  const kindNames = {template: 'Template', source: 'Source deck', guideline: 'Guideline'};
+  const showLibrary = items => {
+    const keepTemplate = pptTemplate.value;
+    const ticked = new Set([...pptSources.querySelectorAll('input:checked')].map(box => box.value));
+    pptTemplate.replaceChildren(...items.filter(i => i.kind === 'template').map(i => new Option(i.name, i.id)));
+    if (keepTemplate) pptTemplate.value = keepTemplate;
+    pptSources.replaceChildren(...items.filter(i => i.kind === 'source').map(i => {
+      const box = el('input');
+      box.type = 'checkbox';
+      box.value = i.id;
+      box.checked = ticked.size ? ticked.has(i.id) : true;
+      const row = el('label');
+      row.append(box, ' ' + i.name);
+      return row;
+    }));
+    libList.replaceChildren(...items.map(i => {
+      const row = el('li', kindNames[i.kind] + ': ' + i.name + (i.layouts ? ' - ' + i.layouts.length + ' layouts' : ''));
+      if (!i.builtin) {
+        const remove = el('button', 'Remove');
+        remove.type = 'button';
+        remove.onclick = async () => {
+          try { showLibrary((await pptJson(await pptApi({action: 'remove', id: i.id}))).library); }
+          catch (error) { libOut.textContent = error.message; }
+        };
+        row.append(' ', remove);
+      }
+      return row;
+    }));
+  };
+  const loadLibrary = async () => {
+    try { showLibrary((await pptJson(await pptApi({action: 'list'}))).library); }
+    catch (error) { libOut.textContent = error.message; }
+  };
+  libAdd.onclick = async () => {
+    const file = libFile.files[0];
+    if (!file) { libOut.textContent = 'Choose a .pptx or .potx file first.'; return; }
+    libAdd.disabled = true;
+    libOut.textContent = 'Uploading and reading ' + file.name + '.';
+    try {
+      showLibrary((await pptJson(await pptApi(null, {kind: libKind.value, file}))).library);
+      libFile.value = '';
+      libOut.textContent = 'Added ' + file.name + '.';
+    } catch (error) {
+      libOut.textContent = error.message;
+    } finally {
+      libAdd.disabled = false;
+    }
+  };
+  pptForm.onsubmit = async event => {
+    event.preventDefault();
+    const name = pptTitle.value.trim() || 'Noventiq deck';
+    pptBuild.disabled = true;
+    pptOut.textContent = 'Planning the slides and building the deck. This can take a minute.';
+    try {
+      const response = await pptApi({action: 'generate', title: pptTitle.value, brief: pptBrief.value, template: pptTemplate.value,
+        slides: pptCount.value, consent: pptConsent.checked,
+        sources: [...pptSources.querySelectorAll('input:checked')].map(box => box.value)});
+      if (!response.ok) await pptJson(response);
+      const url = URL.createObjectURL(await response.blob());
+      const download = el('a', 'Download Noventiq deck');
+      download.href = url;
+      download.download = name.replace(/[<>:"/\\|?*]/g, '_') + ' - Noventiq.pptx';
+      pptOut.replaceChildren((response.headers.get('X-Slides') || '') + ' slides ready. ', download);
+      download.addEventListener('click', () => setTimeout(() => URL.revokeObjectURL(url), 120000), {once: true});
+    } catch (error) {
+      pptOut.textContent = error.message;
+    } finally {
+      pptBuild.disabled = false;
+    }
+  };
+  picker.add(new Option('Noventiq PPT builder', 'ppt'));
+  panels.set('ppt', pptPanel);
+  view.append(pptPanel);
+  loadLibrary();
   picker.onchange = () => {
     for (const [id, panel] of panels) panel.hidden = id !== picker.value;
   };

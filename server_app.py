@@ -19,6 +19,7 @@ from urllib.parse import urlparse, parse_qs, urlencode
 
 import app
 from proposal.proposal_studio import serve as serve_proposal
+from proposal.noventiq_ppt import serve as serve_ppt
 import tam_proxy
 import supervisor
 import hub_jobs
@@ -464,6 +465,8 @@ class Handler(app.Handler):
                 return self.send(200, result)
             except (ValueError, TypeError) as error:
                 return self.send(400, {'error': str(error)})
+        if self.path == '/api/ppt-studio':
+            return serve_ppt(self, app.config, app.foundry_token)
         if self.path == '/api/proposal-studio':
             return serve_proposal(self, app.config, app.foundry_token)
         if self.path == '/api/run':
