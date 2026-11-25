@@ -301,9 +301,9 @@ AGENT_TOOLS=[
 ]
 def agent_defaults(a,ctx):
  return estimate_defaults({'currency':a.get('currency',ctx.get('currency','AED')),'region':a.get('region',ctx.get('region','uaenorth')),'hours':a.get('hours',730),'ahub':a.get('ahub') is True,'disk_tier':a.get('disk_tier','premium'),'include_off':a.get('include_powered_off') is True})
-def estimate_now(name,defaults,customer,project):
+def estimate_now(name,defaults,customer,project,customer_id=None):
  job=uuid.uuid4().hex[:10]; d=ROOT/'estimator'/'runs'/job; d.mkdir(parents=True,exist_ok=True)
- status={'status':'running','message':'Reading input…','customer':customer,'project':project,'input':name.split('-',1)[1],'currency':defaults['currency'],'created_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'via':'AI assistant'}
+ status={'status':'running','message':'Reading input…','customer':customer,'project':project,'input':name.split('-',1)[1],'currency':defaults['currency'],'created_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'via':'AI assistant','customer_id':str(customer_id or 'unassigned')[:64]}
  write_status(d,status); run_estimate(job,d,name,defaults,customer,project,False,status)
  s=estimator_jobs().get(job,status)
  if s.get('status')!='done': raise ValueError(s.get('message','Estimate failed.'))
@@ -321,11 +321,11 @@ def agent_tool(name,a,ctx):
   d=agent_defaults(a,ctx); clean=[e.normalize_item(dict(i,source='AI assistant'),d) for i in items]
   fname=uuid.uuid4().hex[:8]+'-ai-assistant.json'; (ROOT/'estimator'/'inputs').mkdir(parents=True,exist_ok=True)
   (ROOT/'estimator'/'inputs'/fname).write_text(json.dumps({'items':clean}),encoding='utf-8')
-  out=estimate_now(fname,d,ctx['customer'],str(a.get('project',''))[:120]); ctx['artifacts'].append(out['job']); return out
+  out=estimate_now(fname,d,ctx['customer'],str(a.get('project',''))[:120],ctx.get('customer_id')); ctx['artifacts'].append(out['job']); return out
  if name=='estimate_from_file':
   fid=str(a.get('file_id',''))
   if not re.fullmatch(INPUT_RE,fid) or not (ROOT/'estimator'/'inputs'/fid).is_file(): raise ValueError('Unknown file id. Ask the user to attach the file again.')
-  out=estimate_now(fid,agent_defaults(a,ctx),ctx['customer'],str(a.get('project',''))[:120]); ctx['artifacts'].append(out['job']); return out
+  out=estimate_now(fid,agent_defaults(a,ctx),ctx['customer'],str(a.get('project',''))[:120],ctx.get('customer_id')); ctx['artifacts'].append(out['job']); return out
  if name=='recent_estimates':
   return [{'job':k,'customer':v.get('customer'),'project':v.get('project'),'status':v.get('status'),'currency':v.get('currency'),'recommended_monthly':(v.get('summary') or {}).get('rec',{}).get('monthly'),'downloads':v.get('downloads')} for k,v in list(estimator_jobs().items())[:5]]
  if name=='azure_calculator_link':
@@ -515,7 +515,7 @@ def start_estimate(payload):
  if narrative and payload.get('consent') is not True: raise ValueError('Confirm sending the estimate summary to your Azure AI Foundry model, or untick the AI executive summary.')
  if any(t.is_alive() for t in EST_JOBS.values()): raise ValueError('An estimate is already running.')
  job=uuid.uuid4().hex[:10]; d=ROOT/'estimator'/'runs'/job; d.mkdir(parents=True,exist_ok=True)
- status={'status':'running','message':'Reading input…','customer':customer,'project':project,'input':name.split('-',1)[1],'currency':defaults['currency'],'created_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()}
+ status={'status':'running','message':'Reading input…','customer':customer,'project':project,'input':name.split('-',1)[1],'currency':defaults['currency'],'created_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'customer_id':str(payload.get('customer_id','unassigned'))[:64]}
  write_status(d,status)
  t=threading.Thread(target=run_estimate,args=(job,d,name,defaults,customer,project,narrative,status),daemon=True); EST_JOBS[job]=t; t.start()
  logging.info('workflow=estimate status=started')
@@ -552,7 +552,7 @@ def estimator_jobs():
  out={}
  base=ROOT/'estimator'/'runs'
  if not base.is_dir(): return out
- for d in sorted(base.iterdir(),key=lambda p:p.stat().st_mtime,reverse=True)[:8]:
+ for d in sorted(base.iterdir(),key=lambda p:p.stat().st_mtime,reverse=True)[:60]:
   if not re.fullmatch(JOB_RE,d.name): continue
   try: s=json.loads((d/'status.json').read_text(encoding='utf-8'))
   except (FileNotFoundError,json.JSONDecodeError): continue
