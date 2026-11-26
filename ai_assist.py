@@ -497,6 +497,11 @@ def install(handler_cls):
         cost_growth_cloud.install(handler_cls)
     except Exception:
         logging.warning('cost growth not installed', exc_info=True)
+    try:                                                  # Partner Center Azure (EA / CSP) page
+        import partner_azure
+        partner_azure.install(handler_cls)
+    except Exception:
+        logging.warning('partner azure not installed', exc_info=True)
     try:
         import tam_proxy
         real_rewrite = tam_proxy._rewrite
@@ -570,7 +575,11 @@ try:
     from cost_growth_cloud import NAV as _CG_NAV
 except Exception:
     _CG_NAV = ""
-WIDGET = WIDGET.replace("__CGNAV__", _CG_NAV, 1)
+try:
+    from partner_azure import NAV as _PA_NAV
+except Exception:
+    _PA_NAV = ""
+WIDGET = WIDGET.replace("__CGNAV__", _CG_NAV + _PA_NAV, 1)
 
 TAM_BUTTONS = r"""<style id="ccc-asktam">
 #tamAskBtn,.aifab,#ab-fab{left:16px!important;right:auto!important;inset-inline-start:16px!important;inset-inline-end:auto!important;
