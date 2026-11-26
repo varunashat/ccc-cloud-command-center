@@ -502,6 +502,11 @@ def install(handler_cls):
         partner_azure.install(handler_cls)
     except Exception:
         logging.warning('partner azure not installed', exc_info=True)
+    try:                                                  # BOQ alignment check (BOQ vs deployed, who/when from the Activity Log)
+        import boq_compliance
+        boq_compliance.install(handler_cls)
+    except Exception:
+        logging.warning('boq compliance not installed', exc_info=True)
     try:
         import tam_proxy
         real_rewrite = tam_proxy._rewrite

@@ -527,9 +527,9 @@ def install(handler_cls):
     threading.Thread(target=_watcher, daemon=True).start()
 
 
-NAV = r"""<script id="ccc-pa-nav">(function(){function add(){var n=document.querySelector('nav.workspace-nav');if(!n||n.querySelector('a[href="/partner-azure"]'))return;
-var a=document.createElement('a');a.href='/partner-azure';a.textContent='Partner Center Azure (EA / CSP)';a.title='Every Seven Seas Azure customer, EA or CSP, monthly cost and services from Partner Center';
-var t=[].slice.call(n.querySelectorAll('a')).filter(function(x){return /Cost Growth/.test(x.textContent)})[0];if(t&&t.parentNode)t.parentNode.insertBefore(a,t.nextSibling);else n.appendChild(a)}
+NAV = r"""<script id="ccc-pa-nav">(function(){var L=[['/partner-azure','Partner Center Azure (EA / CSP)','Every Seven Seas Azure customer, EA or CSP, monthly cost and services'],['/boq-compliance','BOQ alignment check','Compare a customer BOQ with what is deployed: what changed, when and by whom']];
+function add(){var n=document.querySelector('nav.workspace-nav');if(!n)return;var t=[].slice.call(n.querySelectorAll('a')).filter(function(x){return /Cost Growth/.test(x.textContent)})[0],prev=t;
+L.forEach(function(l){if(n.querySelector('a[href="'+l[0]+'"]'))return;var a=document.createElement('a');a.href=l[0];a.textContent=l[1];a.title=l[2];if(prev&&prev.parentNode){prev.parentNode.insertBefore(a,prev.nextSibling);prev=a}else n.appendChild(a)})}
 add();setTimeout(add,800);setTimeout(add,2500);setTimeout(add,5000);}());</script>"""
 
 try:
