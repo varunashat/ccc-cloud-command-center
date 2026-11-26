@@ -9,6 +9,7 @@ import re
 import threading
 import time
 import traceback
+import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
@@ -34,20 +35,28 @@ def _root():
     return d
 
 
+def _get(url):
+    for attempt in range(7):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'ccc-catalog/1.0'}), timeout=60) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            wait = float(e.headers.get('Retry-After') or 0) if e.code == 429 else 0
+            time.sleep(min(60, wait or 3 * 2 ** attempt))
+        except Exception:
+            time.sleep(min(30, 2 * 2 ** attempt))
+    return None
+
+
 def _fetch_region(region, out, lock, stop):
+    """Returns True when every page of the region was read."""
     flt = f"armRegionName eq '{region}' and priceType eq 'Consumption'"
     url = API + '&$filter=' + urllib.parse.quote(flt)
     pages = 0
-    while url and pages < 400 and not stop.is_set():
-        for attempt in range(4):
-            try:
-                with urllib.request.urlopen(url, timeout=40) as r:
-                    d = json.load(r)
-                break
-            except Exception:
-                time.sleep(2 * (attempt + 1))
-        else:
-            return
+    while url and pages < 600 and not stop.is_set():
+        d = _get(url)
+        if d is None:
+            return False
         with lock:
             for i in d.get('Items', []):
                 m = i.get('meterName', '') + ' ' + i.get('skuName', '')
@@ -63,6 +72,7 @@ def _fetch_region(region, out, lock, stop):
                 if region in ('uaenorth', 'Global') and float(i.get('tierMinimumUnits') or 0) == 0 and pr > 0:
                     e['p'][region] = min(pr, e['p'].get(region, pr))
         url, pages = d.get('NextPageLink'), pages + 1
+    return not url
 
 
 def refresh():
@@ -74,7 +84,7 @@ def refresh():
     def go():
         out, lock, stop = {}, threading.Lock(), threading.Event()
         try:
-            pend = list(REGIONS)
+            pend, failed = list(REGIONS), []
 
             def worker():
                 while True:
@@ -83,22 +93,24 @@ def refresh():
                             return
                         r = pend.pop(0)
                     STATE['current'] = r
-                    _fetch_region(r, out, lock, stop)
+                    ok = _fetch_region(r, out, lock, stop) or _fetch_region(r, out, lock, stop)
+                    if not ok:
+                        failed.append(r)
                     STATE['done'] += 1
-            ts = [threading.Thread(target=worker, daemon=True) for _ in range(5)]
+            ts = [threading.Thread(target=worker, daemon=True) for _ in range(3)]
             [t.start() for t in ts]
             [t.join() for t in ts]
             rows = [[k[0], k[1], k[2], v['u'], sorted(v['r']), list(v['m']), v['p']] for k, v in out.items()]
             if len(rows) < 1000:
                 raise RuntimeError('The price list returned too little data; kept the previous catalogue.')
             rows.sort(key=lambda r: (r[0].lower(), r[1].lower(), r[2].lower()))
-            data = {'generated': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'regions': REGIONS, 'rows': rows}
+            data = {'generated': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'regions': [r for r in REGIONS if r not in failed], 'failed_regions': failed, 'rows': rows}
             p = _root() / 'catalog.json'
             tmp = p.with_suffix('.tmp')
             tmp.write_text(json.dumps(data), encoding='utf-8')
             tmp.replace(p)
             _CACHE.clear()
-            STATE.update(status='done')
+            STATE.update(status='done', failed_regions=failed)
         except Exception as e:
             logging.warning('azure catalog refresh failed: %s', traceback.format_exc()[-400:])
             STATE.update(status='failed', error=str(e)[:300])
@@ -195,7 +207,9 @@ def _watcher():
     while True:
         try:
             d = _root() / 'catalog.json'
-            if not d.is_file() or time.time() - d.stat().st_mtime > 24 * 3600:
+            cat = _load() if d.is_file() else None
+            age = time.time() - d.stat().st_mtime if d.is_file() else 1e9
+            if not cat or age > 24 * 3600 or 'failed_regions' not in cat or (cat.get('failed_regions') and age > 3600):
                 refresh()
         except Exception:
             logging.warning('azure catalog watcher: %s', traceback.format_exc()[-300:])
