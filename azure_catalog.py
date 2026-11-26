@@ -153,6 +153,25 @@ def search(q='', service='', region='', limit=100, offset=0):
                                             'meters': r[5], 'price': r[6].get('uaenorth', r[6].get('Global'))} for r in page]}
 
 
+def hints(task, n=25):
+    """Exact service / product / SKU names from the price list that match the words of a task (given to the browser AI agent)."""
+    d = _load()
+    if not d:
+        return ''
+    words = {w for w in re.findall(r'[a-z0-9]{3,}', str(task).lower()) if w not in ('the', 'and', 'for', 'with', 'azure', 'create', 'add', 'use', 'make', 'new')}
+    if not words:
+        return ''
+    scored = []
+    for r, low in zip(d['rows'], d['low']):
+        sc = sum(1 for w in words if w in low)
+        if sc >= 2 or (sc == 1 and len(words) == 1):
+            scored.append((-sc, 'uaenorth' not in r[4], r))
+    scored.sort(key=lambda x: (x[0], x[1], x[2][0], x[2][2]))
+    lines = [f"{r[0]} | {r[1]} | {r[2]} | {r[3]} | UAE North: {'yes' if 'uaenorth' in r[4] else 'no'}" + (f" | ${r[6].get('uaenorth', r[6].get('Global'))}" if r[6] else '')
+             for _, _, r in scored[:n]]
+    return '\n'.join(lines)[:2500]
+
+
 def price_basket(handler_app, items, project, customer_id, region):
     """Write the basket as an estimator input and start the normal pricing run (official prices, Excel BOQ)."""
     clean = []

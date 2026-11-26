@@ -21,7 +21,7 @@ LOCK = threading.Lock()
 MAX_STEPS = 250
 MAX_ACTIONS = 6
 HOSTS = ('portal.azure.com', 'ms.portal.azure.com', 'login.microsoftonline.com', 'login.live.com', 'microsoftonline.com',
-         'msauth.net', 'msftauth.net', 'aadcdn.msftauth.net', 'azure.com')
+         'msauth.net', 'msftauth.net', 'aadcdn.msftauth.net', 'azure.com', 'azure.microsoft.com')
 SECRET = re.compile(r'pass(word)?|secret|api.?key|access.?key|token|credential|otp|verification code|security code|card number|cvv', re.I)
 DESTRUCTIVE = re.compile(r'\b(delete|remove|purge|detach|deallocate|erase|destroy|reset|force)\b', re.I)
 DO = {'click', 'type', 'select', 'scroll', 'press', 'goto', 'wait'}
@@ -38,6 +38,8 @@ When the whole task is finished and verified on screen: {"actions":[],"done":tru
 If you are blocked and cannot proceed (page will not load, permission denied, quota, repeated errors): {"actions":[],"blocked":"exact reason and what you tried"}.
 If you need the operator (sign-in, MFA, a password/secret, a CAPTCHA, a choice only they can make): {"actions":[],"wait_user":"what you need them to do"}.
 Rules:
+- Any Azure service is in scope (200+ services, 10,000+ SKUs). CATALOGUE lists exact service, product and SKU names from the official price list for this task: use those exact names when you search, pick a SKU or fill a size.
+- For an Azure Pricing Calculator task, goto https://azure.microsoft.com/en-us/pricing/calculator/ , search the product tile by name, add it, then set region, tier/SKU, quantity and hours from the TASK; repeat for every service; do not sign in or share unless asked.
 - Work in the Azure portal. Use portal create wizards, fill every required field from the TASK, review, then Create, and confirm the deployment succeeded.
 - Use the exact names, regions, sizes and settings from the TASK. If something required is missing, make the safest ordinary choice and say so in the summary; ask with wait_user only if the choice is risky or irreversible.
 - Never type passwords, keys, tokens or card numbers: use wait_user so the operator enters them. Do not read secrets back.
@@ -59,6 +61,14 @@ def _parse(text):
         raise ValueError('"actions" must be a list.')
     return {'thought': str(data.get('thought', ''))[:400], 'actions': actions[:MAX_ACTIONS], 'done': data.get('done') is True,
             'summary': str(data.get('summary', ''))[:2000], 'wait_user': str(data.get('wait_user', ''))[:400], 'blocked': str(data.get('blocked', ''))[:600]}
+
+
+def _hints(task):
+    try:
+        import azure_catalog
+        return azure_catalog.hints(task)
+    except Exception:
+        return ''
 
 
 def host_ok(url):
@@ -162,7 +172,7 @@ def dispatch(owner, body, chat):
                 raise ValueError('Job already exists.')
             folder.mkdir(parents=True, exist_ok=True)
             job = {'id': key, 'task': task.strip(), 'created': hub.now(), 'status': 'running', 'stop': False, 'steps': 0, 'log': [], 'history': [],
-                   'context': str(body.get('context') or '')[-3500:], 'inbox': [], 'images': attachments.clean(body.get('images'))}
+                   'context': str(body.get('context') or '')[-3500:], 'catalog': _hints(task), 'inbox': [], 'images': attachments.clean(body.get('images'))}
             save(path, job)
             return job
         if not path.exists():
@@ -218,7 +228,7 @@ def dispatch(owner, body, chat):
             job['history'].append('results: ' + '; '.join(str(r)[:80] for r in previous[:6]))
     obs = clean_observation(body.get('observation'))
     message = ('TASK: ' + job['task'] + '\nCONVERSATION SO FAR:\n' + job.get('context', '')[-2500:] + '\nNEW OPERATOR MESSAGES: ' + (' | '.join(inbox) or 'none') + '\nPREVIOUS WORK (operator history, use if the task refers to earlier work):\n' + agent_store.memory(owner, job['id']) + '\nDONE SO FAR: ' + ' | '.join(job['history'][-14:]) +
-               '\nPAGE: ' + obs['title'] + ' ' + obs['url'] + '\nPAGE TEXT: ' + obs['text'] +
+               '\nCATALOGUE (official price list, exact names):\n' + job.get('catalog', '') + '\nPAGE: ' + obs['title'] + ' ' + obs['url'] + '\nPAGE TEXT: ' + obs['text'] +
                '\nCONTROLS:\n' + controls(obs))
     answer, model = attachments.ask(chat, SYSTEM, message, 1500, images)
     reply = _parse(answer)

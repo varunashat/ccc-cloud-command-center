@@ -14,3 +14,11 @@ class T(unittest.TestCase):
         self.assertEqual(r['total'], 1); self.assertEqual(r['results'][0]['price'], 0.29)
         self.assertEqual(ac.search('', service='Virtual Machines')['total'], 1)
         self.assertEqual(ac.search('', region='Global')['total'], 1)
+
+class T3(unittest.TestCase):
+    def test_hints_and_hosts(self):
+        T().test_search_and_stats()
+        self.assertIn('Azure Bastion | Azure Bastion | Standard', ac.hints('deploy bastion standard in uae'))
+        import browser_agent as ba
+        self.assertTrue(ba.host_ok('https://azure.microsoft.com/en-us/pricing/calculator/'))
+        self.assertFalse(ba.host_ok('https://evil.example.com/'))

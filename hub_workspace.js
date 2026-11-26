@@ -1268,6 +1268,15 @@
     panel.append(exePanel, history, log, input, thumbs, voiceRow, consentLabel, sendButton, stopButton, continueButton, checksButton, checksBox, recovery, planBox);
     content.append(panel);
     syncModePanels();
+    try {                                              // a task handed over from the Azure services and SKUs page
+      const handed = localStorage.getItem("ccc_agent_task");
+      if (handed) {
+        localStorage.removeItem("ccc_agent_task");
+        input.value = handed;
+        modes.browser.checked = true;
+        syncModePanels();
+      }
+    } catch (e) { /* storage unavailable */ }
     refreshExe();
     refreshHistory().catch((error) => {
       status.textContent = error.message;

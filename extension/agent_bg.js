@@ -2,7 +2,7 @@
 // this file only observes and acts on ONE tab, and only while that tab is on an allowed Azure sign-in/portal host.
 const AGENT_CCC = 'https://cloud-command-center.icyhill-ea3b0d83.uaenorth.azurecontainerapps.io';
 const AGENT_HOSTS = ['portal.azure.com', 'portal.azure.net', 'ms.portal.azure.com', 'login.microsoftonline.com', 'login.live.com', 'microsoftonline.com',
-  'msauth.net', 'msftauth.net', 'aadcdn.msftauth.net', 'azure.com'];
+  'msauth.net', 'msftauth.net', 'aadcdn.msftauth.net', 'azure.com', 'azure.microsoft.com'];
 const AGENT_HOME = 'https://portal.azure.com/';
 const hostOk = (u) => { try { const x = new URL(u); return x.protocol === 'https:' && AGENT_HOSTS.some((h) => x.hostname === h || x.hostname.endsWith('.' + h)); } catch (e) { return false; } };
 const AKEY = 'agent_state';
