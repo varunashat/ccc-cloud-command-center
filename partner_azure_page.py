@@ -16,7 +16,7 @@ a{color:var(--a);text-decoration:none}.wrap{max-width:1400px;margin:0 auto;paddi
 table{border-collapse:collapse;width:100%}th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}th:first-child,td:first-child,th.l,td.l{text-align:left}
 th{color:var(--m);font-weight:600;position:sticky;top:0;background:var(--p)}.scr{overflow:auto;max-height:560px}
 tr.c{cursor:pointer}tr.c:hover{background:var(--p2)}tr.sub td{background:#0e1730;color:var(--m);font-size:12.5px}
-.pill{border-radius:99px;padding:1px 9px;font-size:12px;font-weight:600}.EA{background:#12385f;color:#7cc0ff}.CSP{background:#2a1f55;color:#c4b2ff}.Mixed{background:#4a3a0b;color:#fbd56a}.Other{background:#2b3345;color:#9fb0cc}
+.pill{border-radius:99px;padding:1px 9px;font-size:12px;font-weight:600}.EA{background:#12385f;color:#7cc0ff}.CSP{background:#2a1f55;color:#c4b2ff}.Mixed{background:#4a3a0b;color:#fbd56a}.Other,.Unmapped{background:#2b3345;color:#9fb0cc}
 .up{color:var(--g)}.dn{color:var(--r)}input[type=text]{background:var(--p2);border:1px solid var(--line);color:var(--t);border-radius:8px;padding:6px 10px}
 .drop{border:2px dashed var(--line);border-radius:12px;padding:16px;text-align:center;color:var(--m)}.drop.h{border-color:var(--a)}
 .note{color:var(--m);font-size:12.5px}.msg{margin:8px 0;color:var(--y)}
@@ -27,10 +27,11 @@ __CGNAV__
 <div><a class="btn s" href="/cost-growth">Cost Growth (daily)</a> <a class="btn" href="/ai/partner-azure/download">Download Excel</a></div></div>
 <div class="kpis" id="kpis"></div>
 <div class="card"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><h2>Filters</h2>
-<div><span class="seg" id="seg"><button data-v="All" class="on">All</button><button data-v="EA">EA</button><button data-v="CSP">CSP</button><button data-v="Mixed">Mixed</button><button data-v="Other">Other</button></span>
+<div><span class="seg" id="seg"><button data-v="All" class="on">All</button><button data-v="EA">EA</button><button data-v="CSP">CSP</button><button data-v="Mixed">Mixed</button><button data-v="Other">Other</button><button data-v="Unmapped">Unmapped</button></span>
 <input type="text" id="q" placeholder="Search customer / enrollment / subscription"></div></div></div>
 <div class="row"><div class="card"><h2>Monthly ACR by agreement type</h2><div id="trend"></div></div>
 <div class="card"><h2>Top services (latest month)</h2><div id="topsvc"></div></div></div>
+<div class="card"><h2>ACR by attribution type (CSP / PAL / PoR) by month</h2><div class="scr" id="attr"></div></div>
 <div class="card"><h2>Customers by month <span class="note">(click a row for services and subscriptions by month)</span></h2><div class="scr" id="cust"></div></div>
 <div class="card"><h2>Services across all customers</h2><div class="scr" id="svc"></div></div>
 <div class="card"><h2>Data files</h2><div class="drop" id="drop">Drop the Partner Center Azure usage CSV here, or <label style="color:var(--a);cursor:pointer">browse<input type="file" id="file" accept=".csv,.tsv,.txt" hidden multiple></label></div>
@@ -64,22 +65,22 @@ function rows(){if(!D||!D.customers)return[];return D.customers.filter(function(
  return (c.name+' '+c.enroll.join(' ')+' '+Object.keys(c.subs).join(' ')).toLowerCase().indexOf(Q)>=0})}
 function render(){
  if(!D||!D.customers||!D.customers.length){$('kpis').innerHTML='';$('cust').innerHTML='<p class="note">No data yet. Upload the Partner Center Azure usage CSV below.</p>';$('trend').innerHTML='';$('topsvc').innerHTML='';$('svc').innerHTML='';return}
- var M=D.months,L=M[M.length-1],P=M[M.length-2],R=rows();
+ var M=D.months,PM=D.partial_month,CL=M.filter(function(m){return m!==PM}),L=CL[CL.length-1],P=CL[CL.length-2],R=rows();
  var tot=function(m){return R.reduce(function(s,c){return s+(c.by_month[m]||0)},0)};
  var active=R.filter(function(c){return (c.by_month[L]||0)>0}).length;
  var cnt={};R.forEach(function(c){cnt[c.cls]=(cnt[c.cls]||0)+((c.by_month[L]||0)>0?1:0)});
- var first=M[Math.max(0,M.length-13)],yoy=M.length>12?pct(tot(L),tot(M[M.length-13])):null;
+ var yi=M.indexOf(L)-12,yoy=yi>=0?pct(tot(L),tot(M[yi])):null;
  var all=R.reduce(function(s,c){return s+c.total},0),spk=R.filter(function(c){return c.spikes.indexOf(L)>=0}).length;
- $('kpis').innerHTML=[['Latest month',mon(L),'closed month in the data'],['ACR '+mon(L),'$'+fm(tot(L)),''],['MoM',pc(pct(tot(L),tot(P))),'vs '+mon(P)],['YoY',pc(yoy),''],
-  ['Active customers',active,Object.keys(cnt).map(function(k){return k+' '+cnt[k]}).join(' · ')],['Period total','$'+fm(all),mon(M[0])+' – '+mon(L)],['Customers with a spike',spk,'≥ $500 and ≥ 10% in '+mon(L)]]
+ $('kpis').innerHTML=[['Latest closed month',mon(L),PM?mon(PM)+' is still in progress':''],['ACR '+mon(L),'$'+fm(tot(L)),''],['MoM',pc(pct(tot(L),tot(P))),'vs '+mon(P)],['YoY',pc(yoy),''],
+  ['Active customers',active,Object.keys(cnt).map(function(k){return k+' '+cnt[k]}).join(' · ')],['Unique ACR '+mon(L),'$'+fm(R.reduce(function(s,c){return s+((c.uniq_by_month||{})[L]||0)},0)),'excludes ACR duplicated across attribution types'],['Period total','$'+fm(all),mon(M[0])+' – '+mon(M[M.length-1])],['Customers with a spike',spk,'≥ $500 and ≥ 10% in '+mon(L)]]
   .map(function(k){return '<div class="k"><small>'+k[0]+'</small><b>'+k[1]+'</b><small>'+k[2]+'</small></div>'}).join('');
  // trend stacked by class
- var cls=['EA','CSP','Mixed','Other'],col={EA:'#4da3ff',CSP:'#a78bfa',Mixed:'#fbbf24',Other:'#64748b'},W=760,H=250,pl=44,pb=26,bw=(W-pl)/M.length;
+ var cls=['EA','CSP','Mixed','Other','Unmapped'],col={EA:'#4da3ff',CSP:'#a78bfa',Mixed:'#fbbf24',Other:'#64748b',Unmapped:'#475569'},W=760,H=250,pl=44,pb=26,bw=(W-pl)/M.length;
  var st=M.map(function(m){var o={};R.forEach(function(c){o[c.cls]=(o[c.cls]||0)+(c.by_month[m]||0)});return o});
  var mx=Math.max.apply(null,st.map(function(o){return cls.reduce(function(s,k){return s+(o[k]||0)},0)}))||1,svg='<svg viewBox="0 0 '+W+' '+(H+pb)+'" width="100%">';
  for(var i=0;i<=4;i++){var y=H-i/4*(H-10);svg+='<line x1="'+pl+'" x2="'+W+'" y1="'+y+'" y2="'+y+'" stroke="#24324f"/><text x="2" y="'+(y+4)+'" fill="#8fa0c0" font-size="10">$'+fm(mx*i/4)+'</text>'}
  M.forEach(function(m,i){var y0=H,x=pl+i*bw+3;cls.forEach(function(k){var v=st[i][k]||0,h=v/mx*(H-10);if(h>0){svg+='<rect x="'+x+'" y="'+(y0-h)+'" width="'+(bw-6)+'" height="'+h+'" fill="'+col[k]+'"><title>'+mon(m)+' '+k+' $'+fx(v)+'</title></rect>';y0-=h}});
-  svg+='<text x="'+(x+(bw-6)/2)+'" y="'+(H+16)+'" fill="#8fa0c0" font-size="10" text-anchor="middle">'+mon(m)+'</text>'});
+  svg+='<text x="'+(x+(bw-6)/2)+'" y="'+(H+16)+'" fill="#8fa0c0" font-size="10" text-anchor="middle">'+mon(m)+(m===PM?'*':'')+'</text>'});
  $('trend').innerHTML=svg+'</svg><div class="note">'+cls.map(function(k){return '<span style="color:'+col[k]+'">■</span> '+k}).join(' &nbsp; ')+'</div>';
  // top services
  var sv={};R.forEach(function(c){for(var s in c.services)sv[s]=(sv[s]||0)+(c.services[s][L]||0)});
@@ -96,6 +97,10 @@ function render(){
  h+='<tr><td class="l"><b>Total</b></td><td></td><td></td>'+M.map(function(m){return '<td><b>'+fx(tot(m))+'</b></td>'}).join('')+'<td><b>'+fx(all)+'</b></td><td>'+pc(pct(tot(L),tot(P)))+'</td></tr></table>';
  $('cust').innerHTML=h;
  [].forEach.call(document.querySelectorAll('tr.c'),function(r){r.onclick=function(){open[r.dataset.id]=!open[r.dataset.id];render()}});
+ // attribution
+ var at=D.by_attrib||{},ah='<table><tr><th class="l">Attribution</th>'+M.map(function(m){return '<th>'+mon(m)+'</th>'}).join('')+'<th>Total</th></tr>';
+ Object.keys(at).forEach(function(k){ah+='<tr><td class="l">'+esc(k)+'</td>'+M.map(function(m){return '<td>'+(at[k][m]?fx(at[k][m]):'')+'</td>'}).join('')+'<td><b>'+fx(Object.keys(at[k]).reduce(function(a,m){return a+at[k][m]},0))+'</b></td></tr>'});
+ $('attr').innerHTML=ah+'</table><p class="note">Each attribution row counts the same ACR the way the Power BI report does; the same dollar can sit under both PAL and CSP, so do not add the rows. Use Unique ACR above for a de-duplicated total. * = month in progress.</p>';
  // services portfolio
  var ps=D.services||{},ks2=Object.keys(ps).slice(0,60),s2='<table><tr><th class="l">Service</th>'+M.map(function(m){return '<th>'+mon(m)+'</th>'}).join('')+'<th>Total</th><th>MoM</th></tr>';
  ks2.forEach(function(s){var d=ps[s];s2+='<tr><td class="l">'+esc(s)+'</td>'+M.map(function(m){return '<td>'+(d[m]?fx(d[m]):'')+'</td>'}).join('')+'<td><b>'+fx(Object.keys(d).reduce(function(a,k){return a+d[k]},0))+'</b></td><td>'+pc(pct(d[L]||0,d[P]||0))+'</td></tr>'});

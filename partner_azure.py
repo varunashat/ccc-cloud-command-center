@@ -39,6 +39,7 @@ SYN = {
     'l3': ('servicelevel3', 'servicename', 'metername'),
     'partner': ('partnername', 'partnerorgname'),
     'mpn': ('pgampnid', 'mpnid', 'partnerid'),
+    'dup': ('isacrduplicateatpgalevel',),
 }
 MONTHS = {m: i for i, m in enumerate(('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'), 1)}
 
@@ -91,6 +92,36 @@ def _num(v):
     return -x if neg else x
 
 
+def channel_class(ch):
+    c = str(ch or '').lower()
+    if re.search(r'\bea\b|^ea ', c):
+        return 'EA'
+    if 'partner-led' in c or 'partner led' in c:
+        return 'CSP'
+    return 'Other' if c else ''
+
+
+def nkey(name):
+    return re.sub(r'[^a-z0-9]', '', str(name or '').lower())
+
+
+def match_channel(name, chmap):
+    """Customer names differ slightly between Partner Center reports, so match exactly, then by prefix / similarity."""
+    k = nkey(name)
+    if k in chmap:
+        return chmap[k]
+    best, score = None, 0.0
+    import difflib
+    for o, v in chmap.items():
+        if len(k) >= 6 and len(o) >= 6 and (o.startswith(k) or k.startswith(o)):
+            r = 0.95
+        else:
+            r = difflib.SequenceMatcher(None, k, o).ratio()
+        if r > score:
+            best, score = v, r
+    return best if score >= 0.82 else None
+
+
 def classify(channel, attrib, enroll):
     """EA / CSP / Other from the Partner Center fields (documented in the page footer)."""
     c, a = str(channel or '').lower(), str(attrib or '').lower()
@@ -117,6 +148,16 @@ def parse_file(raw, filename=''):
             if n in nh:
                 idx[key] = nh.index(n)
                 break
+    if 'cost' not in idx and 'costsub' not in idx and 'channel' in idx and 'name' in idx:
+        cm = {}
+        for row in rd:
+            if row and idx['name'] < len(row) and idx['channel'] < len(row) and row[idx['name']].strip():
+                d = cm.setdefault(nkey(row[idx['name']]), {})
+                ch = row[idx['channel']].strip()
+                d[ch] = d.get(ch, 0) + 1
+        if not cm:
+            raise ValueError('No customers found in the file.')
+        return {'kind': 'map', 'map': cm, 'months': [], 'source_rows': len(cm), 'skipped': 0, 'warnings': [], 'filename': filename}
     missing = [k for k in ('month', 'name') if k not in idx]
     if missing or not ('cost' in idx or 'costsub' in idx):
         raise ValueError('This does not look like the Partner Center Azure usage report. Need columns Month, CustomerTenantName and ACR_USD '
@@ -145,14 +186,15 @@ def parse_file(raw, filename=''):
         rows += 1
         svc = ' / '.join(x for x in (g(row, 'l1'), g(row, 'l2'), g(row, 'l3')) if x and x.upper() != 'UNKNOWN') or '(not split)'
         cid = g(row, 'cid') or name.upper()
-        key = (month, cid, name, svc, g(row, 'attrib'), g(row, 'channel'), g(row, 'enroll'), g(row, 'sub'), g(row, 'state'))
+        key = (month, cid, name, svc, g(row, 'attrib'), g(row, 'channel'), g(row, 'enroll'), g(row, 'sub'), g(row, 'state'),
+               1 if g(row, 'dup') in ('1', 'True', 'true') else 0)
         agg[key] = agg.get(key, 0.0) + _num(g(row, cost_key))
     if not agg:
         raise ValueError('No usable rows found in the file.')
     if others:
         warn.append(f'{others} rows of other partners were ignored.')
     months = sorted({k[0] for k in agg})
-    return {'rows': [list(k) + [round(v, 4)] for k, v in agg.items()], 'months': months, 'source_rows': rows, 'skipped': skipped, 'warnings': warn,
+    return {'kind': 'usage', 'rows': [list(k) + [round(v, 4)] for k, v in agg.items()], 'months': months, 'source_rows': rows, 'skipped': skipped, 'warnings': warn,
             'has_services': 'l1' in idx, 'has_subs': 'sub' in idx, 'has_attrib': 'attrib' in idx, 'filename': filename}
 
 
@@ -183,10 +225,10 @@ def add_layer(raw, filename):
     parsed = parse_file(raw, filename)
     path = _root() / 'layers' / (digest + '.json.gz')
     with gzip.open(path, 'wt', encoding='utf-8') as f:
-        json.dump(parsed['rows'], f)
-    item = {'id': digest, 'file': Path(filename).name[:120], 'months': parsed['months'], 'rows': parsed['source_rows'], 'bytes': len(raw),
+        json.dump(parsed['map'] if parsed['kind'] == 'map' else parsed['rows'], f)
+    item = {'kind': parsed['kind'], 'id': digest, 'file': Path(filename).name[:120], 'months': parsed['months'], 'rows': parsed['source_rows'], 'bytes': len(raw),
             'added': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'warnings': parsed['warnings'],
-            'has_services': parsed['has_services'], 'has_subs': parsed['has_subs'], 'has_attrib': parsed['has_attrib']}
+            'has_services': parsed.get('has_services', False), 'has_subs': parsed.get('has_subs', False), 'has_attrib': parsed.get('has_attrib', False)}
     with LOCK:
         idx = _load_index()
         idx.append(item)
@@ -209,42 +251,59 @@ def remove_layer(layer_id):
 
 
 def _merged_rows():
-    """Newest layer wins per month."""
+    """Newest usage layer wins per month; customer-channel files are merged into one lookup."""
     idx = _load_index()
+    usage = [i for i in idx if i.get('kind', 'usage') == 'usage']
     owner = {}
-    for it in sorted(idx, key=lambda i: i['added']):
+    for it in sorted(usage, key=lambda i: i['added']):
         for m in it['months']:
             owner[m] = it['id']
-    rows = []
+    rows, chmap = [], {}
     for it in idx:
         try:
             with gzip.open(_root() / 'layers' / (it['id'] + '.json.gz'), 'rt', encoding='utf-8') as f:
-                for r in json.load(f):
-                    if owner.get(r[0]) == it['id']:
-                        rows.append(r)
+                data = json.load(f)
         except Exception:
             logging.warning('partner azure layer unreadable: %s', it['id'])
-    return rows, idx
+            continue
+        if it.get('kind') == 'map':
+            for k, d in data.items():
+                t = chmap.setdefault(k, {})
+                for ch, n in d.items():
+                    t[ch] = max(t.get(ch, 0), n)
+        else:
+            rows.extend(r for r in data if owner.get(r[0]) == it['id'])
+    return rows, idx, chmap
 
 
-def build_dataset(rows, idx):
+def build_dataset(rows, idx, chmap=None):
+    """Cost shown = every row (as the Power BI report counts each attribution). Unique ACR = rows not flagged IsACRDuplicateAtPGALevel."""
+    chmap = chmap or {}
     months = sorted({r[0] for r in rows})
-    cust = {}
-    svc_total = {}
-    for month, cid, name, svc, attrib, channel, enroll, sub, state, cost in rows:
-        c = cust.setdefault(cid, {'id': cid, 'name': name, 'by_month': {}, 'services': {}, 'subs': {}, 'attrib': set(), 'channels': set(),
+    cust, svc_total, by_attrib = {}, {}, {}
+    for r in rows:
+        month, cid, name, svc, attrib, channel, enroll, sub, state = r[:9]
+        dup, cost = (r[9], r[10]) if len(r) > 10 else (0, r[9])
+        c = cust.setdefault(cid, {'id': cid, 'name': name, 'by_month': {}, 'uniq': {}, 'services': {}, 'subs': {}, 'attrib': {}, 'channels': {},
                                   'enroll': set(), 'cls_cost': {}})
-        cls = classify(channel, attrib, enroll)
         c['by_month'][month] = c['by_month'].get(month, 0) + cost
+        if not dup:
+            c['uniq'][month] = c['uniq'].get(month, 0) + cost
         s = c['services'].setdefault(svc, {})
         s[month] = s.get(month, 0) + cost
         t = svc_total.setdefault(svc, {})
         t[month] = t.get(month, 0) + cost
-        c['cls_cost'][cls] = c['cls_cost'].get(cls, 0) + abs(cost)
         if attrib:
-            c['attrib'].add(attrib)
+            ab = c['attrib'].setdefault(attrib, {})
+            ab[month] = ab.get(month, 0) + cost
+            ga = by_attrib.setdefault(attrib, {})
+            ga[month] = ga.get(month, 0) + cost
         if channel:
-            c['channels'].add(channel)
+            c['channels'][channel] = c['channels'].get(channel, 0) + 1
+            k = channel_class(channel) or 'Other'
+            c['cls_cost'][k] = c['cls_cost'].get(k, 0) + abs(cost)
+        elif enroll:
+            c['cls_cost']['EA'] = c['cls_cost'].get('EA', 0) + abs(cost)
         if enroll and enroll.upper() not in ('UNKNOWN', '0'):
             c['enroll'].add(enroll)
         if sub:
@@ -252,43 +311,58 @@ def build_dataset(rows, idx):
             sb['by_month'][month] = sb['by_month'].get(month, 0) + cost
             if state:
                 sb['state'] = state
-    out = []
-    by_cls_month = {}
+    now_m = dt.datetime.now(dt.timezone.utc).strftime('%Y-%m')
+    out, by_cls_month = [], {}
     for c in cust.values():
+        if not c['channels'] and not c['cls_cost']:                 # channel comes from the customer-channel file when usage has none
+            ch = match_channel(c['name'], chmap)
+            if ch:
+                c['channels'] = dict(ch)
+                for chn, n in ch.items():
+                    k = channel_class(chn) or 'Other'
+                    c['cls_cost'][k] = c['cls_cost'].get(k, 0) + n
+        tot_cls = sum(c['cls_cost'].values())
+        if tot_cls:
+            real = [k for k, v in c['cls_cost'].items() if v > 0.1 * tot_cls]
+            cls = real[0] if len(real) == 1 else 'Mixed'
+            if len(real) > 1:
+                cls = 'Mixed'
+        else:
+            cls = 'CSP' if any('csp' in a.lower() for a in c['attrib']) and len(c['attrib']) == 1 else 'Unmapped'
         bm = c['by_month']
-        total = sum(bm.values())
-        cls = max(c['cls_cost'], key=c['cls_cost'].get) if c['cls_cost'] else 'Other'
-        if len([k for k, v in c['cls_cost'].items() if v > 0.01 * sum(c['cls_cost'].values())]) > 1:
-            cls = 'Mixed'
-        seq = [bm.get(m, 0) for m in months]
-        first_i = next((i for i, v in enumerate(seq) if v > 0), 0)
+        closed = [m for m in months if m != now_m]
+        seq = [bm.get(m, 0) for m in closed]
         last, prev = (seq[-1] if seq else 0), (seq[-2] if len(seq) > 1 else 0)
-        spikes = [months[i] for i in range(1, len(seq)) if seq[i - 1] > 0 and seq[i] - seq[i - 1] >= 500 and seq[i] >= 1.1 * seq[i - 1]]
+        spikes = [closed[i] for i in range(1, len(seq)) if seq[i - 1] > 0 and seq[i] - seq[i - 1] >= 500 and seq[i] >= 1.1 * seq[i - 1]]
+        first = next((m for m in months if bm.get(m, 0) > 0), None)
         for m, v in bm.items():
             d = by_cls_month.setdefault(cls, {})
             d[m] = d.get(m, 0) + v
+        rd2 = lambda d: {m: round(v, 2) for m, v in d.items()}
         out.append({
             'id': c['id'], 'name': c['name'], 'cls': cls, 'attrib': sorted(c['attrib']), 'channels': sorted(c['channels']),
-            'enroll': sorted(c['enroll'])[:5], 'by_month': {m: round(v, 2) for m, v in bm.items()}, 'total': round(total, 2),
+            'enroll': sorted(c['enroll'])[:5], 'by_month': rd2(bm), 'uniq_by_month': rd2(c['uniq']), 'total': round(sum(bm.values()), 2),
             'last': round(last, 2), 'prev': round(prev, 2), 'mom': (round((last - prev) / prev * 100, 1) if prev > 0 else None),
-            'first_seen': months[first_i] if months else None, 'spikes': spikes,
-            'services': {k: {m: round(v, 2) for m, v in d.items()} for k, d in sorted(c['services'].items(), key=lambda kv: -sum(kv[1].values()))[:60]},
-            'subs': {k: {'state': v['state'], 'by_month': {m: round(x, 2) for m, x in v['by_month'].items()}} for k, v in list(c['subs'].items())[:80]},
+            'first_seen': first, 'spikes': spikes, 'attrib_by_month': {k: rd2(v) for k, v in c['attrib'].items()},
+            'services': {k: rd2(d) for k, d in sorted(c['services'].items(), key=lambda kv: -sum(kv[1].values()))[:60]},
+            'subs': {k: {'state': v['state'], 'by_month': rd2(v['by_month'])} for k, v in list(c['subs'].items())[:80]},
         })
-    out.sort(key=lambda c: -c['last'] if c['last'] else -c['total'] * 0.001)
+    out.sort(key=lambda c: -(c['last'] or c['total'] * 0.001))
     tot_m = {m: round(sum(c['by_month'].get(m, 0) for c in out), 2) for m in months}
+    uniq_m = {m: round(sum(c['uniq_by_month'].get(m, 0) for c in out), 2) for m in months}
     return {
-        'generated': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'months': months, 'currency': 'USD',
-        'customers': out, 'by_month': tot_m,
+        'generated': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'months': months, 'partial_month': now_m if now_m in months else None,
+        'currency': 'USD', 'customers': out, 'by_month': tot_m, 'unique_by_month': uniq_m,
         'by_class': {k: {m: round(v, 2) for m, v in d.items()} for k, d in by_cls_month.items()},
+        'by_attrib': {k: {m: round(v, 2) for m, v in d.items()} for k, d in by_attrib.items()},
         'services': {k: {m: round(v, 2) for m, v in d.items()} for k, d in sorted(svc_total.items(), key=lambda kv: -sum(kv[1].values()))[:150]},
-        'files': [{k: i[k] for k in ('id', 'file', 'months', 'rows', 'added', 'warnings', 'has_services', 'has_subs', 'has_attrib')} for i in idx],
+        'files': [{k: i.get(k) for k in ('id', 'file', 'kind', 'months', 'rows', 'added', 'warnings', 'has_services', 'has_subs', 'has_attrib')} for i in idx],
     }
 
 
 def rebuild():
-    rows, idx = _merged_rows()
-    data = build_dataset(rows, idx) if rows else {'generated': None, 'months': [], 'customers': [], 'by_month': {}, 'by_class': {}, 'services': {},
+    rows, idx, chmap = _merged_rows()
+    data = build_dataset(rows, idx, chmap) if rows else {'generated': None, 'months': [], 'customers': [], 'by_month': {}, 'by_class': {}, 'services': {},
                                                    'files': idx, 'currency': 'USD'}
     p = _root() / 'data.json'
     tmp = p.with_suffix('.tmp')
