@@ -507,6 +507,11 @@ def install(handler_cls):
         boq_compliance.install(handler_cls)
     except Exception:
         logging.warning('boq compliance not installed', exc_info=True)
+    try:                                                  # Azure services and SKU catalogue
+        import azure_catalog
+        azure_catalog.install(handler_cls)
+    except Exception:
+        logging.warning('azure catalog not installed', exc_info=True)
     try:
         import tam_proxy
         real_rewrite = tam_proxy._rewrite

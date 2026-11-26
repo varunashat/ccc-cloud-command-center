@@ -1,6 +1,6 @@
 FROM cccacr1a5492.azurecr.io/ccc@sha256:a8c0259f1b3e46cf49aea9aab5f8d249e6e0623018b5de03e13f170440214764
 RUN pip install --no-cache-dir "reportlab>=4,<6" "python-pptx>=1.0,<2"
-COPY server_app.py supervisor.js hub_jobs.py hub_worker.py hub_workspace.js hub_chat.py hub_report.py deploy_chat.py browser_agent.py laptop_agent.py agent_store.py attachments.py weather_page.py dashboard.html ai_assist.py partner_azure.py partner_azure_page.py boq_compliance.py boq_compliance_page.py /app/
+COPY server_app.py supervisor.js hub_jobs.py hub_worker.py hub_workspace.js hub_chat.py hub_report.py deploy_chat.py browser_agent.py laptop_agent.py agent_store.py attachments.py weather_page.py dashboard.html ai_assist.py partner_azure.py partner_azure_page.py boq_compliance.py boq_compliance_page.py azure_catalog.py azure_catalog_page.py /app/
 
 COPY app.py /app/
 COPY estimator/azure_estimator.py /app/estimator/
