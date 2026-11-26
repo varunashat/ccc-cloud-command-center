@@ -22,6 +22,31 @@
   };
   const addBtn = (slug) => document.querySelector('button.pickerItem__button--add[data-slug="' + CSS.escape(slug) + '"]');
 
+  // Read-only task: the BOQ alignment check page asked to read the services inside a shared estimate link.
+  if (task.read) {
+    const sleepR = (ms) => new Promise((r) => setTimeout(r, ms));
+    const openR = () => new Promise((res, rej) => { const r = indexedDB.open('localforage'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const getR = async (k) => { const d = await openR(); return new Promise((r, j) => { const q = d.transaction('keyvaluepairs', 'readonly').objectStore('keyvaluepairs').get(k); q.onsuccess = () => r(q.result); q.onerror = () => j(q.error); }); };
+    let picked = null;
+    for (let i = 0; i < 160 && !picked; i++) {
+      await sleepR(500);
+      try {
+        const all = (await getR('azure_calculator_v3_estimates')) || {};
+        const act = await getR('azure_calculator_v3_active_estimate_id');
+        const cand = (act && all[act]) || Object.values(all).sort((a, b) => ((b.modules || []).length - (a.modules || []).length))[0];
+        if (cand && (cand.modules || []).length) picked = cand;
+      } catch (e) { /* storage not ready yet */ }
+    }
+    await sleepR(1500);
+    const txt = (document.body.innerText || '').replace(/ /g, ' ').slice(0, 20000);
+    const tot = (/([^\s\d]{0,4}\s?[\d,]+\.\d{2})\s*\/?\s*Estimated monthly cost/i.exec(txt) || [])[1] || '';
+    let json = null;
+    try { json = picked ? JSON.parse(JSON.stringify(picked)) : null; } catch (e) { json = null; }
+    if (json && JSON.stringify(json).length > 300000) json = { estimateName: json.estimateName, modules: (json.modules || []).slice(0, 80) };
+    ask({ type: 'estimate', estimate: json, text: txt, total: tot, error: json || txt.length > 200 ? '' : 'the calculator did not show any services for this link.' });
+    return;
+  }
+
   // Wait for the calculator to finish loading.
   for (let i = 0; i < 360 && !document.querySelector('button.pickerItem__button--add'); i++) await sleep(250);
   if (!document.querySelector('button.pickerItem__button--add')) return fail('the calculator page did not load. Close this tab and try again.');

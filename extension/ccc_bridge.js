@@ -11,10 +11,14 @@ window.addEventListener('message', (e) => {
     } catch (error) { fail('The extension was reloaded. Refresh this Cloud Command Center tab (F5) and try again.'); }
     return;
   }
+  if (m.type === 'readlink') {
+    try { chrome.runtime.sendMessage({ type: 'readlink', url: String(m.url || '') }); } catch (error) { /* extension reloaded: page refresh needed */ }
+    return;
+  }
   if (m.type !== 'fill') return;
   try { chrome.runtime.sendMessage({ type: 'fill', plan: String(m.plan || ''), idx: Number(m.idx) || 0 }); } catch (error) { /* extension reloaded: page refresh needed */ }
 });
 chrome.runtime.onMessage.addListener((m) => {
-  if (m && (m.type === 'status' || m.type === 'link')) window.postMessage(Object.assign({ src: 'ccc-ext' }, m), location.origin);
+  if (m && (m.type === 'status' || m.type === 'link' || m.type === 'estimate')) window.postMessage(Object.assign({ src: 'ccc-ext' }, m), location.origin);
 });
 window.postMessage({ src: 'ccc-ext', type: 'ready' }, location.origin);

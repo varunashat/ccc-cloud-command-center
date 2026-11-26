@@ -24,7 +24,21 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
       await setTask(calc.id, { plan, phase: 'new', dash: tab.id, idx: m.idx, login: false, started: Date.now() });
       return reply(true);
     }
+    if (m.type === 'readlink') {
+      if (!tab.url || !tab.url.startsWith(CCC + '/')) return reply(null);
+      if (!/^https:\/\/azure\.com\/e\/[A-Za-z0-9]{6,80}$/.test(String(m.url || ''))) { chrome.tabs.sendMessage(tab.id, { type: 'estimate', ok: false, error: 'Use an Azure Calculator share link like https://azure.com/e/...' }); return reply(null); }
+      const rd = await chrome.tabs.create({ url: m.url, active: true, openerTabId: tab.id });
+      await setTask(rd.id, { read: true, url: m.url, dash: tab.id, started: Date.now() });
+      return reply(true);
+    }
     const t = await getTask(tab.id);
+    if (m.type === 'estimate' && t && t.read) {
+      await chrome.storage.session.remove(key(tab.id));
+      tell(t, { type: 'estimate', ok: !m.error, error: m.error || '', url: t.url, estimate: m.estimate || null, text: String(m.text || '').slice(0, 20000), total: String(m.total || '').slice(0, 30) });
+      chrome.tabs.update(t.dash, { active: true }).catch(() => {});
+      chrome.tabs.remove(tab.id).catch(() => {});
+      return reply(true);
+    }
     if (m.type === 'task?') return reply(t && Date.now() - t.started < 3600e3 ? t : null);
     if (!t) return reply(null);
     if (m.type === 'update') { Object.assign(t, m.patch || {}); await setTask(tab.id, t); return reply(true); }

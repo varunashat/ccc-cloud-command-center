@@ -25,3 +25,22 @@ class T(unittest.TestCase):
     def test_aligned(self):
         r = bc.compare({'lines': BOQ['lines'][1:2]}, DEP[1:2], {})
         self.assertEqual(r['findings'], [])
+
+class T3(unittest.TestCase):
+    def test_other_services_and_parse(self):
+        boq = {'lines': [{'type': 'other', 'name': 'Bastion', 'service': 'Azure Bastion', 'arm_type': 'microsoft.network/bastionhosts', 'quantity': 1},
+                         {'type': 'other', 'name': 'Redis', 'service': 'Azure Cache', 'arm_type': 'microsoft.cache/redis', 'quantity': 1}]}
+        inv = [{'id': '/s/b1', 'name': 'b1', 'type': 'Microsoft.Network/bastionHosts'}, {'id': '/s/b2', 'name': 'b2', 'type': 'Microsoft.Network/bastionHosts'},
+               {'id': '/s/lb', 'name': 'lb', 'type': 'Microsoft.Network/loadBalancers'}, {'id': '/s/nic', 'name': 'nic', 'type': 'Microsoft.Network/networkInterfaces'}]
+        r = bc.compare_other(boq, inv, {})
+        st = {(f['status'], f['type']) for f in r['findings']}
+        self.assertIn(('Not aligned', 'Azure Bastion'), st)
+        self.assertIn(('In BOQ, not deployed', 'Azure Cache'), st)
+        self.assertIn(('Not in BOQ', 'microsoft.network/loadbalancers'), st)
+        self.assertFalse(any('networkinterfaces' in f['type'] for f in r['findings']))
+    def test_parse_estimate(self):
+        fake = lambda msgs, n: ('{"project":"P","monthly_total":100,"lines":[{"type":"vm","name":"web","service":"Virtual Machines","region":"UAE North","config":"D4s v5","quantity":2}]}', 'm')
+        b = bc.parse_estimate(fake, 'https://azure.com/e/abc123def', {'modules': []}, 'text', '$100.00')
+        self.assertEqual(b['lines'][0]['region'], 'uaenorth')
+        self.assertEqual(bc.load_baseline(b['id'])['lines'][0]['quantity'], 2.0)
+        with self.assertRaises(ValueError): bc.parse_estimate(fake, 'http://evil.example/x', {}, '', '')
