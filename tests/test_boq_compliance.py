@@ -44,3 +44,10 @@ class T3(unittest.TestCase):
         self.assertEqual(b['lines'][0]['region'], 'uaenorth')
         self.assertEqual(bc.load_baseline(b['id'])['lines'][0]['quantity'], 2.0)
         with self.assertRaises(ValueError): bc.parse_estimate(fake, 'http://evil.example/x', {}, '', '')
+
+class T4(unittest.TestCase):
+    def test_map_services(self):
+        fake = lambda msgs, n: ('{"items":[{"id":0,"service_name":"Azure Bastion","product_name":"Azure Bastion","sku_name":"Standard","meter_name":""}]}', 'm')
+        out = bc.map_services(fake, [{'type': 'microsoft.network/bastionhosts', 'name': 'b', 'location': 'uaenorth', 'sku': 'Standard', 'kind': ''}])
+        self.assertEqual(out[0]['service_name'], 'Azure Bastion'); self.assertEqual(out[0]['quantity'], 1); self.assertEqual(out[0]['region'], 'uaenorth')
+        self.assertEqual(bc.map_services(fake, []), [])
