@@ -21,4 +21,4 @@ window.addEventListener('message', (e) => {
 chrome.runtime.onMessage.addListener((m) => {
   if (m && (m.type === 'status' || m.type === 'link' || m.type === 'estimate')) window.postMessage(Object.assign({ src: 'ccc-ext' }, m), location.origin);
 });
-window.postMessage({ src: 'ccc-ext', type: 'ready' }, location.origin);
+window.postMessage({ src: 'ccc-ext', type: 'ready', version: chrome.runtime.getManifest().version }, location.origin);

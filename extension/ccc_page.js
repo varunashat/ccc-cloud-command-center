@@ -30,7 +30,7 @@
   window.addEventListener('message', (e) => {
     const m = e.data;
     if (e.source !== window || e.origin !== location.origin || !m || m.src !== 'ccc-ext') return;
-    if (m.type === 'ready') document.documentElement.dataset.cccExtension = '1';
+    if (m.type === 'ready') { document.documentElement.dataset.cccExtension = '1'; document.documentElement.dataset.cccExtVersion = String(m.version || '1'); }
     if (m.type === 'status') toast(m.text, m.ok);
     if (m.type === 'link' && /^https:\/\/azure\.com\/e\/[A-Za-z0-9]+$/.test(m.url)) {
       const bs = copyButtons(); const b = bs[m.idx] || bs[0];

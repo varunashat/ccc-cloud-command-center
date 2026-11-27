@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Cloud Command Center \u2013 Calculator auto-fill + Browser agent",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Calculator auto-fill, and lets Cloud Command Center operate your Azure portal tab on your instruction (AI Foundry decides, this extension clicks and types).",
   "permissions": [
     "storage",
