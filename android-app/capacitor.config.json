@@ -1,0 +1,4 @@
+{"appId":"com.noventiq.ccc","appName":"Cloud Command Center","webDir":"www",
+ "server":{"url":"https://cloud-command-center.icyhill-ea3b0d83.uaenorth.azurecontainerapps.io","cleartext":false,
+  "allowNavigation":["login.microsoftonline.com","*.microsoftonline.com","*.microsoft.com","*.live.com","*.msauth.net","*.msftauth.net","*.azurecontainerapps.io"]},
+ "android":{"backgroundColor":"#0b1220"}}

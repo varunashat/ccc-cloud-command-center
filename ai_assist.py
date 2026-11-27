@@ -507,6 +507,11 @@ def install(handler_cls):
         boq_compliance.install(handler_cls)
     except Exception:
         logging.warning('boq compliance not installed', exc_info=True)
+    try:                                                  # installable app (PWA): manifest, service worker, icons
+        import pwa
+        pwa.install(handler_cls)
+    except Exception:
+        logging.warning('pwa not installed', exc_info=True)
     try:                                                  # Azure Well-Architected assessment (5 pillars, usage metrics)
         import waf_assessment
         waf_assessment.install(handler_cls)

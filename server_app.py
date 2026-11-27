@@ -241,7 +241,7 @@ def current_user():
 
 DISABLED = {'calc_agent', 'calc_signin', 'calculator', 'partner', 'chat', 'browser'}
 
-LOGIN_PAGE = """<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+LOGIN_PAGE = """<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#0b1220"><link rel="icon" href="/pwa/icon-192.png">
 <title>Cloud Command Center - sign in</title><style>body{font:16px system-ui,sans-serif;background:#0f172a;color:#e2e8f0;display:grid;place-items:center;min-height:100vh;margin:0}
 .box{max-width:520px;padding:28px;background:#111c33;border-radius:14px}button{font:inherit;padding:10px 16px;border-radius:8px;border:0;background:#5eead4;color:#04211d;font-weight:600;cursor:pointer}
 code{font-size:26px;letter-spacing:3px;background:#0b1224;padding:6px 12px;border-radius:8px}a{color:#5eead4}input{width:100%;padding:8px;margin:8px 0;border-radius:6px;border:1px solid #334}small{color:#94a3b8}</style>
