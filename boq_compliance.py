@@ -432,6 +432,9 @@ def diff_plan(check_id, chat=None):
     if mapped:
         agent = ('Open the Azure Pricing Calculator (https://azure.microsoft.com/en-us/pricing/calculator/). Add each of these services with these exact products and SKUs, region uaenorth, '
                  'pay-as-you-go, then show the estimate total and the share link:\n' + '\n'.join(f"- {m['service_name']} | {m['product_name']} | SKU {m['sku_name']} | quantity {m['quantity']}" for m in mapped))
+    rec['cost'] = {'job': started['job'], 'boq_monthly_of_changed': round(boq_part, 2), 'services': len(lines) + len(mapped), 'notes': (notes + ([map_note] if map_note else []))[:10],
+                   'priced_at': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'link': (rec.get('cost') or {}).get('link', ''), 'link_total': (rec.get('cost') or {}).get('link_total', '')}
+    _jsave(_root() / 'checks' / (check_id + '.json'), rec)
     return {'job': started['job'], 'plan': json.dumps(plan, separators=(',', ':')) if plan else '', 'services': len(lines) + len(mapped), 'notes': (notes + ([map_note] if map_note else []))[:10],
             'boq_monthly_of_changed': round(boq_part, 2), 'agent_task': agent, 'unpriced': []}
 
@@ -555,7 +558,7 @@ def install(handler_cls):
                         r0 = _jload(_root() / 'checks' / (h['id'] + '.json'), None)
                         if r0:
                             prior.append(r0)
-                data = boq_report.build_pdf(rec, boq, prior[-30:], ai_assist.chat)
+                data = boq_report.build_pdf(rec, boq, prior[-30:], ai_assist.chat, boq_report.cost_info(rec))
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/pdf')
                 self.send_header('Content-Disposition', 'attachment; filename="BOQ_alignment_report_' + cid + '.pdf"')
@@ -609,6 +612,17 @@ def install(handler_cls):
                 if st['status'] == 'done':
                     srv._FLOWS.pop(str(p.get('fid', '')), None)
                 return self.send(200, {'status': st['status'], 'message': st.get('message', '')})
+            if path == '/ai/boq/costlink':
+                cid = str(p.get('id', ''))
+                if not re.fullmatch(r'[a-f0-9]{10}', cid):
+                    return self.send(400, {'error': 'Unknown check.'})
+                r0 = _jload(_root() / 'checks' / (cid + '.json'), None)
+                u = str(p.get('url', ''))
+                if not r0 or not re.fullmatch(r'https://azure\.com/e/[A-Za-z0-9]{6,80}', u):
+                    return self.send(400, {'error': 'Unknown check or link.'})
+                r0.setdefault('cost', {}).update(link=u, link_total=str(p.get('total') or '')[:40])
+                _jsave(_root() / 'checks' / (cid + '.json'), r0)
+                return self.send(200, {'ok': True})
             if path == '/ai/boq/diffplan':
                 import ai_assist
                 return self.send(200, diff_plan(str(p.get('id', '')), ai_assist.chat))

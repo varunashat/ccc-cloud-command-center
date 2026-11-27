@@ -61,8 +61,18 @@ class T5(unittest.TestCase):
         f2 = {'status': 'Not in BOQ', 'type': 'Virtual machine', 'resource': 'extra', 'resource_id': '/x/e', 'changes': [{'parameter': 'VM size', 'boq': '', 'deployed': 'B2s'}], 'last_change': None, 'created': None}
         old = {'time': '2026-11-10T00:00:00Z', 'findings': [dict(f1)]}
         rec = {'id': 'a' * 10, 'time': '2026-11-27T00:00:00Z', 'job': 'j', 'tenant': 't', 'subscriptions': ['s'], 'project': 'Demo', 'user': 'u', 'deployed_resources': 5, 'aligned': 3, 'findings': [f1, f2], 'warnings': []}
-        pdf = br.build_pdf(rec, BOQ, [old], None, 'Extra 100 USD / month')
+        pdf = br.build_pdf(rec, BOQ, [old], None, None)
         self.assertTrue(pdf.startswith(b'%PDF'))
         self.assertEqual(rec['findings'][0]['first_seen'], '2026-11-10T00:00:00Z')
         pdf2 = br.build_pdf(dict(rec, findings=[]), BOQ, [], None)
         self.assertTrue(pdf2.startswith(b'%PDF'))
+
+class T6(unittest.TestCase):
+    def test_pdf_cost(self):
+        import boq_report as br
+        rec = {'id': 'b' * 10, 'time': '2026-11-27T00:00:00Z', 'job': 'j', 'tenant': 't', 'subscriptions': [], 'project': 'D', 'user': 'u', 'deployed_resources': 1, 'aligned': 0, 'findings': [], 'warnings': []}
+        cost = {'status': 'done', 'payg_monthly': 500.0, 'boq_monthly_of_changed': 200.0, 'priced_at': '2026-11-27T01:00:00', 'link': 'https://azure.com/e/abcdef123456', 'link_total': '$300',
+                'top': [{'name': 'vm1', 'config': 'D8', 'qty': 1, 'payg': 500}], 'notes': ['x']}
+        self.assertTrue(br.build_pdf(rec, BOQ, [], None, cost).startswith(b'%PDF'))
+        self.assertTrue(br.build_pdf(rec, BOQ, [], None, {'status': 'running', 'job': 'x'}).startswith(b'%PDF'))
+        self.assertIsNone(br.cost_info(rec))

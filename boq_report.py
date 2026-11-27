@@ -92,6 +92,29 @@ def narrative(rec, tr, boq, chat=None):
     return base, base
 
 
+def cost_info(rec):
+    """Reads the saved pricing run for this check. Returns a dict, or None when the difference was never priced."""
+    c = rec.get('cost')
+    if not c:
+        return None
+    out = dict(c)
+    try:
+        import app
+        st = json.loads((app.ROOT / 'estimator' / 'runs' / c['job'] / 'status.json').read_text(encoding='utf-8'))
+        out['status'] = st.get('status')
+        out['message'] = st.get('message', '')
+        if st.get('status') == 'done':
+            pg = (st.get('summary') or {}).get('payg') or {}
+            out['payg_monthly'] = pg.get('monthly')
+            out['payg_annual'] = pg.get('annual')
+            out['top'] = st.get('top') or []
+            out['by_type'] = st.get('by_type') or {}
+            out['errors'] = st.get('errors') or []
+    except Exception:
+        out['status'] = 'unknown'
+    return out
+
+
 def build_pdf(rec, boq, prior, chat=None, cost=None):
     tr = trend(rec, prior)
     exe, facts_line = narrative(rec, tr, boq, chat)
@@ -123,9 +146,32 @@ def build_pdf(rec, boq, prior, chat=None, cost=None):
     k = Table(kp, colWidths=[fw * .28, fw * .24, fw * .24, fw * .24])
     k.setStyle(TableStyle([('BOX', (0, 0), (-1, -1), .6, NAVY), ('INNERGRID', (0, 0), (-1, -1), .3, colors.HexColor('#c9d3df')), ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f4f7fb')), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')]))
     S += [k, Paragraph('Executive summary', H2), Paragraph(_e(exe), P)]
-    if cost:
-        S += [Paragraph('Additional cost of the differences', H2),
-              Paragraph(_e(cost), P)]
+    S.append(Paragraph('Additional cost of the differences', H2))
+    if not cost:
+        S.append(Paragraph('The differences have not been priced yet. Open the check in Cloud Command Center, press "Price the difference", then download this report again.', P))
+    elif cost.get('status') != 'done' or cost.get('payg_monthly') is None:
+        S.append(Paragraph('Pricing was started on %s but has not finished (%s). Download the report again in a minute.' % (_d(cost.get('priced_at')), _e(cost.get('message') or cost.get('status') or 'running')), P))
+    else:
+        dep = float(cost['payg_monthly'])
+        boqp = float(cost.get('boq_monthly_of_changed') or 0)
+        extra = dep - boqp
+        kp2 = [[_p('Deployed cost of the items that differ', P), _p('Already in the BOQ for the modified items', P), _p('Estimated additional cost', P), _p('Additional per year', P)],
+               [Paragraph('<b>$%s / month</b>' % f'{dep:,.0f}', P), Paragraph('<b>$%s / month</b>' % f'{boqp:,.0f}', P),
+                Paragraph('<b><font color="%s">$%s / month</font></b>' % ('#c0392b' if extra > 0 else '#1e8449', f'{extra:,.0f}'), P), Paragraph('<b>$%s</b>' % f'{extra * 12:,.0f}', P)]]
+        k2 = Table(kp2, colWidths=[fw * .25] * 4)
+        k2.setStyle(TableStyle([('BOX', (0, 0), (-1, -1), .6, NAVY), ('INNERGRID', (0, 0), (-1, -1), .3, colors.HexColor('#c9d3df')), ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f4f7fb'))]))
+        S.append(k2)
+        S.append(Paragraph('Pay-as-you-go list prices (Azure Retail Prices API, uaenorth). Additional cost = deployed cost of everything that differs minus what the BOQ already priced for the modified items. Priced %s UTC.' % _d(cost.get('priced_at')), NOTE))
+        top = cost.get('top') or []
+        if top:
+            rows = [['Item', 'Configuration', 'Qty', 'Monthly (PAYG)']] + [[_p(x.get('name')), _p(x.get('config')), str(x.get('qty', '')), f"{float(x.get('payg') or 0):,.2f}"] for x in top[:12]]
+            t = Table(rows, colWidths=[fw * .3, fw * .45, fw * .06, fw * .14], repeatRows=1)
+            t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), NAVY), ('TEXTCOLOR', (0, 0), (-1, 0), colors.white), ('FONTSIZE', (0, 0), (-1, -1), 7.3), ('GRID', (0, 0), (-1, -1), .25, colors.HexColor('#c9d3df')), ('VALIGN', (0, 0), (-1, -1), 'TOP')]))
+            S += [Spacer(1, 4), t]
+    if cost and cost.get('link'):
+        S.append(Paragraph('Azure Pricing Calculator link for the difference: %s%s' % (_e(cost['link']), ' (estimated %s / month)' % _e(cost['link_total']) if cost.get('link_total') else ''), P))
+    for n in (cost or {}).get('notes') or []:
+        S.append(Paragraph('• ' + _e(n), NOTE))
     S.append(PageBreak())
     # proposed BOQ
     S.append(Paragraph('1. Proposed BOQ (what was agreed)', H1))
