@@ -23,27 +23,25 @@
   const addBtn = (slug) => document.querySelector('button.pickerItem__button--add[data-slug="' + CSS.escape(slug) + '"]');
 
   // Read-only task: the BOQ alignment check page asked to read the services inside a shared estimate link.
+  // The estimate that the link opened is read from the page itself (the calculator's saved local estimates are not used: they can be other estimates).
   if (task.read) {
     const sleepR = (ms) => new Promise((r) => setTimeout(r, ms));
-    const openR = () => new Promise((res, rej) => { const r = indexedDB.open('localforage'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
-    const getR = async (k) => { const d = await openR(); return new Promise((r, j) => { const q = d.transaction('keyvaluepairs', 'readonly').objectStore('keyvaluepairs').get(k); q.onsuccess = () => r(q.result); q.onerror = () => j(q.error); }); };
-    let picked = null;
-    for (let i = 0; i < 160 && !picked; i++) {
+    const grab = () => (document.body.innerText || '').replace(/\u00a0/g, ' ');
+    let txt = '', err = '';
+    for (let i = 0; i < 240; i++) {                     // up to about 2 minutes
       await sleepR(500);
-      try {
-        const all = (await getR('azure_calculator_v3_estimates')) || {};
-        const act = await getR('azure_calculator_v3_active_estimate_id');
-        const cand = (act && all[act]) || Object.values(all).sort((a, b) => ((b.modules || []).length - (a.modules || []).length))[0];
-        if (cand && (cand.modules || []).length) picked = cand;
-      } catch (e) { /* storage not ready yet */ }
+      txt = grab();
+      if (/Too many estimates open/i.test(txt)) { err = 'the calculator has the maximum of 10 estimates open. Close some estimates in the calculator (the x on each tab), then read the link again.'; break; }
+      if (/Estimated monthly cost/i.test(txt) && /Add services to estimate/i.test(txt) && (/Monthly:\s*\S/.test(txt) || i > 120)) { await sleepR(2000); txt = grab(); break; }
     }
-    await sleepR(1500);
-    const txt = (document.body.innerText || '').replace(/ /g, ' ').slice(0, 20000);
-    const tot = (/([^\s\d]{0,4}\s?[\d,]+\.\d{2})\s*\/?\s*Estimated monthly cost/i.exec(txt) || [])[1] || '';
-    let json = null;
-    try { json = picked ? JSON.parse(JSON.stringify(picked)) : null; } catch (e) { json = null; }
-    if (json && JSON.stringify(json).length > 300000) json = { estimateName: json.estimateName, modules: (json.modules || []).slice(0, 80) };
-    ask({ type: 'estimate', estimate: json, text: txt, total: tot, error: json || txt.length > 200 ? '' : 'the calculator did not show any services for this link.' });
+    const lines = txt.split('\n').map((x) => x.trim()).filter(Boolean);
+    const name = lines[0] && lines[0].length < 120 ? lines[0] : '';
+    const s = txt.indexOf('Add services to estimate'), e = txt.indexOf('CURRENCY');
+    const body = (s >= 0 ? txt.slice(s, e > s ? e : s + 12000) : txt).slice(0, 18000);
+    const tot = (/Estimated monthly cost\s*\n?\s*([^\s\d]{0,4}\s?[\d,]+\.\d{2})/i.exec(body) || /([^\s\d]{0,4}\s?[\d,]+\.\d{2})\s*\/?\s*Estimated monthly cost/i.exec(txt) || [])[1] || '';
+    const ok = !err && /Monthly:\s*\S/.test(body);
+    ask({ type: 'estimate', estimate: { estimateName: name }, text: 'ESTIMATE NAME: ' + name + '\n' + body, total: tot,
+      error: ok ? '' : (err || 'the calculator did not show any services for this link (it may be an empty estimate).') });
     return;
   }
 
