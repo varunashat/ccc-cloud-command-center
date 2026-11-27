@@ -412,8 +412,10 @@
     parent.append(panel);
   }
   function render() {
-    content.replaceChildren();
     const hash = location.hash;
+    // The deployment chat must survive background refreshes: rebuilding it wiped what the user was typing.
+    if (hash === "#hub-deployment" && content.querySelector("[data-deploy-panel]")) return;
+    content.replaceChildren();
     const workflow = Object.keys(labels).find((key) => hash === "#hub-" + key);
     if (hash === "#hub-deployment") {
       deploymentPage();
@@ -507,6 +509,7 @@
   function deploymentPage() {
     const panel = document.createElement("section");
     panel.className = "panel";
+    panel.dataset.deployPanel = "1";
     panel.append(
       element("h2", "Deploy with AI Foundry"),
       element(
