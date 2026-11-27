@@ -498,7 +498,7 @@ def install(handler_cls):
     if getattr(handler_cls, '_boq_installed', False):
         return
     real_get, real_post = handler_cls.do_GET, handler_cls.do_POST
-    G = ('/boq-compliance', '/ai/boq/tenants', '/ai/boq/baselines', '/ai/boq/subs', '/ai/boq/history', '/ai/boq/result', '/ai/boq/state', '/ai/boq/watches', '/ai/boq/xlsx')
+    G = ('/boq-compliance', '/ai/boq/tenants', '/ai/boq/baselines', '/ai/boq/subs', '/ai/boq/history', '/ai/boq/result', '/ai/boq/state', '/ai/boq/watches', '/ai/boq/xlsx', '/ai/boq/pdf')
 
     def do_GET(self):
         path, _, qs = self.path.partition('?')
@@ -542,6 +542,25 @@ def install(handler_cls):
                 return self.send(404, {'error': 'Unknown check.'})
             if path == '/ai/boq/result':
                 return self.send(200, rec)
+            if path == '/ai/boq/pdf':
+                import ai_assist
+                import boq_report
+                try:
+                    boq = load_baseline(rec['job'])
+                except Exception:
+                    boq = {'lines': [], 'project': rec.get('project')}
+                prior = []
+                for h in reversed(history()):
+                    if h['id'] != cid and h.get('job') == rec['job'] and h.get('tenant') == rec['tenant'] and h.get('time', '') < rec.get('time', ''):
+                        r0 = _jload(_root() / 'checks' / (h['id'] + '.json'), None)
+                        if r0:
+                            prior.append(r0)
+                data = boq_report.build_pdf(rec, boq, prior[-30:], ai_assist.chat)
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/pdf')
+                self.send_header('Content-Disposition', 'attachment; filename="BOQ_alignment_report_' + cid + '.pdf"')
+                self.send_header('Content-Length', str(len(data))); self.end_headers(); self.wfile.write(data)
+                return
             tmp = _root() / ('x-' + cid + '.xlsx')
             export_xlsx(rec, tmp)
             b = tmp.read_bytes(); tmp.unlink()

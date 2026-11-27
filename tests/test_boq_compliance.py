@@ -51,3 +51,18 @@ class T4(unittest.TestCase):
         out = bc.map_services(fake, [{'type': 'microsoft.network/bastionhosts', 'name': 'b', 'location': 'uaenorth', 'sku': 'Standard', 'kind': ''}])
         self.assertEqual(out[0]['service_name'], 'Azure Bastion'); self.assertEqual(out[0]['quantity'], 1); self.assertEqual(out[0]['region'], 'uaenorth')
         self.assertEqual(bc.map_services(fake, []), [])
+
+
+class T5(unittest.TestCase):
+    def test_pdf(self):
+        import boq_report as br
+        f1 = {'status': 'Not aligned', 'type': 'Virtual machine', 'resource': 'app01', 'resource_id': '/x/app01', 'changes': [{'parameter': 'VM size', 'boq': 'D4s v5', 'deployed': 'D8s v5'}],
+              'last_change': {'time': '2026-11-20T10:00:00Z', 'by': 'bob@x.com', 'op': 'write'}, 'created': {'time': '2026-10-01T10:00:00Z', 'by': 'amy@x.com'}}
+        f2 = {'status': 'Not in BOQ', 'type': 'Virtual machine', 'resource': 'extra', 'resource_id': '/x/e', 'changes': [{'parameter': 'VM size', 'boq': '', 'deployed': 'B2s'}], 'last_change': None, 'created': None}
+        old = {'time': '2026-11-10T00:00:00Z', 'findings': [dict(f1)]}
+        rec = {'id': 'a' * 10, 'time': '2026-11-27T00:00:00Z', 'job': 'j', 'tenant': 't', 'subscriptions': ['s'], 'project': 'Demo', 'user': 'u', 'deployed_resources': 5, 'aligned': 3, 'findings': [f1, f2], 'warnings': []}
+        pdf = br.build_pdf(rec, BOQ, [old], None, 'Extra 100 USD / month')
+        self.assertTrue(pdf.startswith(b'%PDF'))
+        self.assertEqual(rec['findings'][0]['first_seen'], '2026-11-10T00:00:00Z')
+        pdf2 = br.build_pdf(dict(rec, findings=[]), BOQ, [], None)
+        self.assertTrue(pdf2.startswith(b'%PDF'))
