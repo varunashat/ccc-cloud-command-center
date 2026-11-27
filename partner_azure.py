@@ -527,7 +527,7 @@ def install(handler_cls):
     threading.Thread(target=_watcher, daemon=True).start()
 
 
-NAV = r"""<script id="ccc-pa-nav">(function(){var L=[['/partner-azure','Partner Center Azure (EA / CSP)','Every Seven Seas Azure customer, EA or CSP, monthly cost and services'],['/boq-compliance','BOQ alignment check','Compare a customer BOQ with what is deployed: what changed, when and by whom'],['/azure-catalog','Azure services and SKUs','Every Azure service and SKU with list prices; price a basket into a BOQ']];
+NAV = r"""<script id="ccc-pa-nav">(function(){var L=[['/partner-azure','Partner Center Azure (EA / CSP)','Every Seven Seas Azure customer, EA or CSP, monthly cost and services'],['/boq-compliance','BOQ alignment check','Compare a customer BOQ with what is deployed: what changed, when and by whom'],['/waf-assessment','Azure Well-Architected assessment','Pick a customer directory and subscriptions: 5-pillar assessment with usage metrics, right-sizing and a PDF report'],['/azure-catalog','Azure services and SKUs','Every Azure service and SKU with list prices; price a basket into a BOQ']];
 function add(){var n=document.querySelector('nav.workspace-nav');if(!n)return;var t=[].slice.call(n.querySelectorAll('a')).filter(function(x){return /Cost Growth/.test(x.textContent)})[0],prev=t;
 L.forEach(function(l){if(n.querySelector('a[href="'+l[0]+'"]'))return;var a=document.createElement('a');a.href=l[0];a.textContent=l[1];a.title=l[2];if(prev&&prev.parentNode){prev.parentNode.insertBefore(a,prev.nextSibling);prev=a}else n.appendChild(a)})}
 add();setTimeout(add,800);setTimeout(add,2500);setTimeout(add,5000);}());</script>"""
