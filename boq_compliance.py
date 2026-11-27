@@ -573,6 +573,23 @@ def install(handler_cls):
                 except LookupError:
                     return self.send(400, {'error': 'Azure AI Foundry is not configured for this app.'})
                 return self.send(200, {'baseline': b, 'baselines': baselines()})
+            if path in ('/ai/boq/signin', '/ai/boq/signinpoll'):
+                srv = sys.modules.get('__main__')
+                if not hasattr(srv, 'start_device'):
+                    srv = sys.modules.get('server_app')
+                if path == '/ai/boq/signin':
+                    import secrets
+                    from discovery.azure_discovery import check_tenant
+                    t = check_tenant(str(p.get('tenant', '')))
+                    fid = secrets.token_urlsafe(16)
+                    r = srv.start_device(fid, t, owner=user)
+                    return self.send(200, {'fid': fid, 'code': r['code'], 'url': r['url']})
+                st = srv._FLOWS.get(str(p.get('fid', '')))
+                if not st:
+                    return self.send(200, {'status': 'failed', 'message': 'Start the sign-in again.'})
+                if st['status'] == 'done':
+                    srv._FLOWS.pop(str(p.get('fid', '')), None)
+                return self.send(200, {'status': st['status'], 'message': st.get('message', '')})
             if path == '/ai/boq/diffplan':
                 import ai_assist
                 return self.send(200, diff_plan(str(p.get('id', '')), ai_assist.chat))

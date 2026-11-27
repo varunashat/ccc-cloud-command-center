@@ -42,7 +42,18 @@ window.addEventListener('message',function(e){var m=e.data;if(e.source!==window|
   post('parse',{url:m.url,estimate:m.estimate,text:m.text,total:m.total}).then(function(d){if(d.error){$('lmsg').textContent=d.error;return}var b=d.baseline;B=d.baselines||B;$('job').innerHTML=B.map(function(x){return '<option value="'+x.job+'">'+esc((x.project||'BOQ')+' · '+x.saved.slice(0,10)+' · '+x.job)+'</option>'}).join('');$('job').value=b.id;info();
    $('lmsg').textContent='BOQ read from the link'+(b.monthly_total?' (calculator total '+b.monthly_total+')':'')+'.';$('lsvc').innerHTML='<table><tr><th>Service</th><th>Configuration</th><th>Region</th><th>Qty</th></tr>'+b.lines.map(function(l){return '<tr><td>'+esc(l.service||l.name)+'</td><td>'+esc(l.config)+'</td><td>'+esc(l.region)+'</td><td>'+l.quantity+'</td></tr>'}).join('')+'</table>'})}
  if(m.type==='link'){$('clm').innerHTML='Calculator link for the difference: <a href="'+esc(m.url)+'" target="_blank" rel="noopener">'+esc(m.url)+'</a>'+(m.total?' · estimated '+esc(m.total)+' / month':'')}});
-$('loadsubs').onclick=function(){$('msg').textContent='Loading subscriptions...';j('/ai/boq/subs?tenant='+encodeURIComponent($('tenant').value.trim())).then(function(d){$('msg').textContent=d.error||'';$('subs').innerHTML=(d.subscriptions||[]).map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+' ('+s.id.slice(0,8)+')</option>'}).join('')})};
+function loadSubs(){$('msg').textContent='Loading subscriptions...';j('/ai/boq/subs?tenant='+encodeURIComponent($('tenant').value.trim())).then(function(d){
+ if(d.error&&/token for that directory|sign-in has expired/i.test(d.error)){needSignin();return}
+ $('msg').textContent=d.error||'';$('subs').innerHTML=(d.subscriptions||[]).map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+' ('+s.id.slice(0,8)+')</option>'}).join('')})}
+function needSignin(){var m=$('msg');m.innerHTML='You are not signed in to this directory yet. <button class="btn s" id="sgn" style="margin:0 6px">Sign in to this directory</button>';
+ $('sgn').onclick=function(){m.textContent='Starting sign-in...';fetch('/ai/boq/signin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant:$('tenant').value.trim()})}).then(function(r){return r.json()}).then(function(d){
+  if(d.error){m.textContent=d.error;return}
+  window.open(d.url,'_blank','noopener');
+  m.innerHTML='Open <a href="'+esc(d.url)+'" target="_blank" rel="noopener">'+esc(d.url)+'</a> and enter code <b>'+esc(d.code)+'</b>, then sign in with your account for this customer. Waiting...';
+  var n=0,t=setInterval(function(){n++;if(n>120){clearInterval(t);m.textContent='Timed out. Click Load to try again.';return}
+   fetch('/ai/boq/signinpoll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fid:d.fid})}).then(function(r){return r.json()}).then(function(s){
+    if(s.status==='done'){clearInterval(t);loadSubs()}else if(s.status==='failed'||s.status==='denied'){clearInterval(t);m.textContent=s.message||'Sign-in failed.'}})},3000)})}}
+$('loadsubs').onclick=loadSubs;
 $('run').onclick=function(){$('msg').textContent='Running... reading inventory and Activity Log';post('check',body()).then(function(d){if(d.error){$('msg').textContent=d.error;return}poll(d.task)})};
 function poll(t){j('/ai/boq/state?id='+t).then(function(s){if(s.status==='running'){setTimeout(function(){poll(t)},3000)}else if(s.status==='done'){$('msg').textContent='';show(s.id);hist()}else{$('msg').textContent=s.error||'Failed'}})}
 $('watch').onclick=function(){post('watch',body()).then(function(d){$('msg').textContent=d.error||'Daily monitor added';wl(d.watches)})};
